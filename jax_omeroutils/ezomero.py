@@ -98,7 +98,7 @@ def get_image_ids(conn, project=None, dataset=None):
     --------
     Return orphaned images:
     >>> orphans = get_image_ids(conn)
-    
+
     Return IDs of all images from Project named "Good stuff":
     >>> good_stuff_ims = get_image_ids(conn, project="Good stuff")
 
@@ -184,7 +184,7 @@ def image_has_imported_filename(conn, im_id, imported_filename):
     OMERO but not necessarily the image ID. This is frequently the case when
     we want to annotate a recently imported image. This funciton will help
     to filter a list of image IDs to only those associated with a particular
-    filename in ImportedImageFiles. 
+    filename in ImportedImageFiles.
 
     Parameters
     ----------

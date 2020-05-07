@@ -3,8 +3,8 @@ import os
 import pathlib
 import pandas as pd
 from functools import partial
-from omeroutils.filewriter import write_files_tsv, write_import_md_json
-from omeroutils.filewriter import write_import_yml
+from jax_omeroutils.filewriter import write_files_tsv, write_import_md_json
+from jax_omeroutils.filewriter import write_import_yml
 
 # metadata filetype handling #
 ##############################
@@ -257,6 +257,7 @@ class ImportBatch:
         import_md_json_fp = write_import_md_json(self.md, self.basepath,
                                                  self.user, self.group)
         logging.info(f'Writing {import_md_json_fp}')
+        print(f'Success! Files written to {targetpath}')
 
     def _validate_flat(self):
         """Use the "flat" approach for validating the import batch.

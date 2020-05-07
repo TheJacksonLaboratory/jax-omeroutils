@@ -1,6 +1,6 @@
 import json
 import pandas as pd
-from omeroutils import filewriter
+from jax_omeroutils import filewriter
 
 
 def _make_md():

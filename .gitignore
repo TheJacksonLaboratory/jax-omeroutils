@@ -7,3 +7,6 @@
 # pytest
 .pytest_cache
 __pycache__
+
+# misc python stuff
+jax_omeroutils.egg-info

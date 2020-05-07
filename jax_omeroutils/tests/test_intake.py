@@ -2,7 +2,7 @@ import os
 import pytest
 import pandas as pd
 import prepare_import_batch
-from omeroutils import intake
+from jax_omeroutils import intake
 
 
 # helper functions

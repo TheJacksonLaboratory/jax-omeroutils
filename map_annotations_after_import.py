@@ -43,10 +43,15 @@ def main(md_path, admin_user, server, port):
         im_ids = get_image_ids(conn, project=project, dataset=dataset)
         im_ids = [im_id for im_id in im_ids
                   if image_has_imported_filename(conn, im_id, filename)]
-        map_ann_ids = post_map_annotation(conn, im_ids, md, ns)
-        print(map_ann_ids)
+        if len(im_ids) == 0:
+            print(f"Cannot annotate {project} / {dataset} / {filename}"
+                  " because it can not be found")
+        else:
+            map_ann_ids = post_map_annotation(conn, im_ids, md, ns)
+            print(map_ann_ids)
     conn.close()
     print('Complete!')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Use import_md.json output'

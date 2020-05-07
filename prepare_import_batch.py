@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from omeroutils import intake
+from jax_omeroutils import intake
 
 
 def main(basepath, targetpath, user, group):
@@ -9,7 +9,6 @@ def main(basepath, targetpath, user, group):
     targetpath = str(Path(targetpath))  # sanitize; need to switch to pathlib!
     batch.set_target_path(targetpath)
     batch.write_files()
-    print(f'Success! Files written to {targetpath}')
     return
 
 
