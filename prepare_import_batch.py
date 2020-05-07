@@ -9,6 +9,7 @@ def main(basepath, targetpath, user, group):
     targetpath = str(Path(targetpath))  # sanitize; need to switch to pathlib!
     batch.set_target_path(targetpath)
     batch.write_files()
+    print(f'Success! Files written to {targetpath}')
     return
 
 

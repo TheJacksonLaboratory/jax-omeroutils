@@ -34,7 +34,7 @@ def main(md_path, admin_user, server, port):
     conn.SERVICE_OPTS.setOmeroGroup(group_id)
 
     # loop through metadata and annotate
-
+    print('New Annotations:')
     for md in annotation_md:
         project = str(md.pop('project'))
         dataset = str(md.pop('dataset'))
@@ -46,7 +46,7 @@ def main(md_path, admin_user, server, port):
         map_ann_ids = post_map_annotation(conn, im_ids, md, ns)
         print(map_ann_ids)
     conn.close()
-
+    print('Complete!')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Use import_md.json output'
