@@ -257,7 +257,7 @@ class ImportBatch:
         import_md_json_fp = write_import_md_json(self.md, self.basepath,
                                                  self.user, self.group)
         logging.info(f'Writing {import_md_json_fp}')
-        print(f'Success! Files written to {targetpath}')
+        print(f'Success! Files written to {self.target_path}')
 
     def _validate_flat(self):
         """Use the "flat" approach for validating the import batch.
