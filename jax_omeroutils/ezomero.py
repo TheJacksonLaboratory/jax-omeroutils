@@ -1,16 +1,19 @@
 from omero.gateway import MapAnnotationWrapper
+from omero.model import MapAnnotationI
 
 
 # posts
-def post_map_annotation(conn, image_ids, kv_dict, ns):
-    """create new map annotation and attach to images
+def post_map_annotation(conn, object_type, object_ids, kv_dict, ns):
+    """Create new MapAnnotation and link to images
 
     Parameters
     ----------
     conn : ``omero.gateway.BlitzGateway`` object
         OMERO connection.
-    image_ids : int or list of ints
-        Image IDs where MapAnnotations will be posted.
+    object_type : str
+       OMERO object type, passed to ``BlitzGateway.getObjects``
+    object_ids : int or list of ints
+        IDs of objects to which the new MapAnnotation will be linked.
     kv_dict : dict
         key-value pairs that will be included in the MapAnnotation
     ns : str
@@ -18,8 +21,8 @@ def post_map_annotation(conn, image_ids, kv_dict, ns):
 
     Returns
     -------
-    map_ann_ids : list of ints
-        IDs of newly created MapAnnotations
+    map_ann_id : int
+        IDs of newly created MapAnnotation
 
     Examples
     --------
@@ -28,16 +31,16 @@ def post_map_annotation(conn, image_ids, kv_dict, ns):
              'occupation': 'time traveler'
              'first name': 'Kyle',
              'surname': 'Reese'}
-    >>> post_map_annotation(conn, [23,56,78], d, ns)
-    [234, 235, 236]
+    >>> post_map_annotation(conn, "Image", [23,56,78], d, ns)
+    234
     """
-    if type(image_ids) not in [list, int]:
-        raise TypeError('image_ids must be list or integer')
-    if type(image_ids) is not list:
-        image_ids = [image_ids]
+    if type(object_ids) not in [list, int]:
+        raise TypeError('object_ids must be list or integer')
+    if type(object_ids) is not list:
+        object_ids = [object_ids]
 
-    if len(image_ids) == 0:
-        raise ValueError('image_ids must contain one or more items')
+    if len(object_ids) == 0:
+        raise ValueError('object_ids must contain one or more items')
 
     if type(kv_dict) is not dict:
         raise TypeError('kv_dict must be of type `dict`')
@@ -48,16 +51,13 @@ def post_map_annotation(conn, image_ids, kv_dict, ns):
         v = str(v)
         kv_pairs.append([k, v])
 
-    map_ann_ids = []
-    for image in conn.getObjects('Image', image_ids):
-        map_ann = MapAnnotationWrapper(conn)
-        map_ann.setNs(str(ns))
-        map_ann.setValue(kv_pairs)
-        map_ann.save()
-        image.linkAnnotation(map_ann)
-        map_ann_ids.append(map_ann.getId())
-
-    return map_ann_ids
+    map_ann = MapAnnotationWrapper(conn)
+    map_ann.setNs(str(ns))
+    map_ann.setValue(kv_pairs)
+    map_ann.save()
+    for o in conn.getObjects(object_type, object_ids):
+        o.linkAnnotation(map_ann)
+    return map_ann.getId()
 
 
 # gets
@@ -110,45 +110,107 @@ def get_image_ids(conn, project=None, dataset=None):
         if type(project) not in [str, int]:
             raise TypeError('project must be integer or string')
 
-        if type(project) is int:
-            ps = conn.getObjects('Project', [project])
-        elif type(project) is str:
+        if type(project) is str:
             ps = conn.getObjects('project', attributes={'name': project})
+            project = [p.getId() for p in ps]
 
     if dataset is not None:
         if type(dataset) not in [str, int]:
             raise TypeError('dataset must be integer or string')
 
-        if type(dataset) is int:
-            ds = conn.getObjects('Dataset', [dataset])
-        elif type(dataset) is str:
+        if type(dataset) is str:
             ds = conn.getObjects('Dataset', attributes={'name': dataset})
+            dataset = [d.getId() for d in ds]
+
+    if type(project) is not list:
+        project = [project]
+    if type(dataset) is not list:
+        dataset = [dataset]
 
     im_ids = []
     if (project is None) and (dataset is None):
         for im in conn.listOrphans('Image'):
             im_ids.append(im.getId())
-    elif project is None:
-        for d in ds:
-            for im in d.listChildren():
-                im_ids.append(im.getId())
-    elif dataset is None:
-        for p in ps:
-            for d in p.listChildren():
-                for im in d.listChildren():
-                    im_ids.append(im.getId())
     else:
-        d_ids = [d.getId() for d in ds]
-        for p in ps:
-            for d in p.listChildren():
-                if d.getId() in d_ids:
-                    for im in d.listChildren():
-                        im_ids.append(im.getId())
+        for d in dataset:
+            for p in project:
+                opts = {'project': p, 'dataset': d}
+                if opts['project'] is None:
+                    opts.pop('project')
+                if opts['dataset'] is None:
+                    opts.pop('dataset')
+                ims = conn.getObjects('Image', opts=opts)
+                im_ids.extend([im.getId() for im in ims])
     return im_ids
+
+
+def get_map_annotation_ids(conn, object_type, object_id, ns=None):
+    """Get IDs of map annotations associated with an object
+
+    Parameters
+    ----------
+    conn : ``omero.gateway.BlitzGateway`` object
+        OMERO connection.
+    object_type : str
+        OMERO object type, passed to ``BlitzGateway.getObject``
+    object_id : int
+        ID of object of ``object_type``.
+    ns : str
+        Namespace with which to filter results
+
+    Returns
+    -------
+    map_ann_ids : list of ints
+
+    Examples
+    --------
+    Return IDs of all map annotations belonging to an image:
+    >>> map_ann_ids = get_map_annotation_ids(conn, 'Image', 42)
+
+    Return IDs of map annotations with namespace "test" linked to a Dataset:
+    >>> map_ann_ids = get_map_annotation_ids(conn, 'Datset', 16, ns='test')
+    """
+
+    target_object = conn.getObject(object_type, object_id)
+    map_ann_ids = []
+    for ann in target_object.listAnnotations(ns):
+        if ann.OMERO_TYPE is MapAnnotationI:
+            map_ann_ids.append(ann.getId())
+    return map_ann_ids
+
+
+def get_map_annotation(conn, map_ann_id):
+    """Get the value of a map annotation object
+
+    Parameters
+    ----------
+    conn : ``omero.gateway.BlitzGateway`` object
+        OMERO connection.
+    map_ann_id : int
+        ID of map annotation to get.
+
+    Returns
+    -------
+    kv_dict : dict
+        The value of the specified map annotation object, as a Python dict.
+
+    Example
+    -------
+    >>> ma_dict = get_map_annotation(conn, 62)
+    >>> print(ma_dict)
+    {'testkey': 'testvalue', 'testkey2': 'testvalue2'}
+    """
+    kv_pairs = conn.getObject('MapAnnotation', map_ann_id).getValue()
+    kv_dict = {}
+    for k, v in kv_pairs:
+        kv_dict[k] = v
+    return kv_dict
 
 
 def get_group_id(conn, group_name):
     """Get ID of a group based on group name.
+
+    Must be an exact match. Case sensitive.
 
     Parameters
     ----------
@@ -160,7 +222,7 @@ def get_group_id(conn, group_name):
     Returns
     -------
     group_id : int
-        ID of the OMERO group.
+        ID of the OMERO group. Returns `None` if group cannot be found.
 
     Examples
     --------
@@ -173,6 +235,51 @@ def get_group_id(conn, group_name):
     for g in conn.listGroups():
         if g.getName() == group_name:
             return g.getId()
+    return None
+
+
+# puts
+def put_map_annotation(conn, map_ann_id, kv_dict, ns=None):
+    """Update an existing map annotation with new values (kv pairs)
+
+    Parameters
+    ----------
+    conn : ``omero.gateway.BlitzGateway`` object
+        OMERO connection.
+    map_ann_id : int
+        ID of map annotation whose values (kv pairs) will be replaced.
+    kv_dict : dict
+        New values (kv pairs) for the MapAnnotation.
+    ns : str
+        New namespace for the MapAnnotation. If left as None, the old
+        namespace will be used.
+
+    Returns
+    -------
+    Returns None.
+
+    Examples
+    --------
+    Change only the values of an existing map annotation:
+    >>> new_values = {'testkey': 'testvalue', 'testkey2': 'testvalue2'}
+    >>> put_map_annotation(conn, 15, new_values)
+
+    Change both the values and namespace of an existing map annotation:
+    >>> put_map_annotation(conn, 16, new_values, 'test_v2')
+    """
+    map_ann = conn.getObject('MapAnnotation', map_ann_id)
+
+    if ns is None:
+        ns = map_ann.getNs()
+    map_ann.setNs(ns)
+
+    kv_pairs = []
+    for k, v in kv_dict.items():
+        k = str(k)
+        v = str(v)
+        kv_pairs.append([k, v])
+    map_ann.setValue(kv_pairs)
+    map_ann.save()
     return None
 
 
@@ -222,4 +329,15 @@ def image_has_imported_filename(conn, im_id, imported_filename):
     else:
         return False
 
+
 # prints
+def print_map_annotation(conn, map_ann_id):
+    """Print some information and value of a map annotation.
+
+    """
+    map_ann = conn.getObject('MapAnnotation', map_ann_id)
+    print(f'Map Annotation: {map_ann_id}')
+    print(f'Namespace: {map_ann.getNs()}')
+    print('Key-Value Pairs:')
+    for k, v in map_ann.getValue():
+        print(f'\t{k}:\t{v}')
