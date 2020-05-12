@@ -47,8 +47,8 @@ def main(md_path, admin_user, server, port):
             print(f"Cannot annotate {project} / {dataset} / {filename}"
                   " because it can not be found")
         else:
-            map_ann_ids = post_map_annotation(conn, im_ids, md, ns)
-            print(map_ann_ids)
+            map_ann_id = post_map_annotation(conn, "Image", im_ids, md, ns)
+            print(map_ann_id)
     conn.close()
     print('Complete!')
 
