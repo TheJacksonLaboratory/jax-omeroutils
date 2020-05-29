@@ -123,7 +123,7 @@ class ImportBatch:
 
     Parameters
     ----------
-    basepath : str or pathlike object
+    import_path : str or pathlike object
         Path to the directory containing the images to be imported. Files will
         be written to this directory. If supplying string, do not include
         trailing slash!
@@ -137,7 +137,7 @@ class ImportBatch:
 
     Attributes
     ----------
-    basepath : str
+    import_path : str
         See description in Parameters section.
     import_type : {'flat', 'plate'}
         Method to use for handling metadata.
@@ -186,12 +186,12 @@ class ImportBatch:
     >>> batch.set_target('/hyperfile/omero/Research_IT/djme_20200101')
     """
 
-    def __init__(self, basepath, user, group, import_type='flat'):
-        self.basepath = str(basepath)
+    def __init__(self, import_path, user, group, import_type='flat'):
+        self.import_path = str(import_path)
         self.import_type = import_type
         self.user = user  # shortname (for OMERO)
         self.group = group  # OMERO group
-        self.md = load_md_from_file(find_md_file(basepath))
+        self.md = load_md_from_file(find_md_file(import_path))
         self.valid_batch = False
         self.target_path = None
 
@@ -249,15 +249,15 @@ class ImportBatch:
             logging.error('target_path must be set to create import files')
             return
 
-        files_tsv_fp = write_files_tsv(self.md, self.basepath,
+        files_tsv_fp = write_files_tsv(self.md, self.import_path,
                                        self.target_path)
         logging.info(f'Writing {files_tsv_fp}')
-        import_yml_fp = write_import_yml(self.basepath, self.target_path)
+        import_yml_fp = write_import_yml(self.import_path, self.target_path)
         logging.info(f'Writing {import_yml_fp}')
-        import_md_json_fp = write_import_md_json(self.md, self.basepath,
+        import_md_json_fp = write_import_md_json(self.md, self.import_path,
                                                  self.user, self.group)
         logging.info(f'Writing {import_md_json_fp}')
-        print(f'Success! Files written to {self.target_path}')
+        print(f'Success! Files written to {self.import_path}')
 
     def _validate_flat(self):
         """Use the "flat" approach for validating the import batch.
@@ -297,7 +297,7 @@ class ImportBatch:
             self.valid_batch = False
 
         # Check for file mismatching
-        file_list_dir = os.listdir(self.basepath)
+        file_list_dir = os.listdir(self.import_path)
         file_list_md = self.md.filename.values
         for f in file_list_dir:
             if f.endswith(tuple(MD_VALID_TYPES.keys())):

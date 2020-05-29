@@ -132,7 +132,7 @@ def test_post_dataset(conn, project_structure, timestamp):
     ds_names = [d.getName() for d in ds]
     assert ds_test_name2 in ds_names
     conn.deleteObjects("Dataset", [did, did2], deleteAnns=True,
-                       deleteChildren=True)
+                       deleteChildren=True, wait=True)
 
 
 def test_post_image(conn, project_structure, timestamp, image_fixture):
@@ -147,7 +147,7 @@ def test_post_image(conn, project_structure, timestamp, image_fixture):
     im_id2 = ezomero.post_image(conn, image_fixture, image_name)
     assert conn.getObject("Image", im_id2).getName() == image_name
     conn.deleteObjects("Image", [im_id, im_id2], deleteAnns=True,
-                       deleteChildren=True)
+                       deleteChildren=True, wait=True)
 
 
 def test_post_project(conn, timestamp):
@@ -162,7 +162,7 @@ def test_post_project(conn, timestamp):
     pid2 = ezomero.post_project(conn, new_proj2, description=desc)
     assert conn.getObject("Project", pid2).getDescription() == desc
     conn.deleteObjects("Project", [pid, pid2], deleteAnns=True,
-                       deleteChildren=True)
+                       deleteChildren=True, wait=True)
 
 
 def test_post_project_type(conn):
