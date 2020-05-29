@@ -4,8 +4,8 @@ import logging
 import pathlib
 from getpass import getpass
 from omero.gateway import BlitzGateway
-from omeroutils.ezomero import get_group_id, get_image_ids
-from omeroutils.ezomero import post_map_annotation, image_has_imported_filename
+from jax_omeroutils.ezomero import get_group_id, get_image_ids
+from jax_omeroutils.ezomero import post_map_annotation, image_has_imported_filename
 
 CURRENT_MD_NS = 'jax.org/omeroutils/user_submitted/v0'
 
