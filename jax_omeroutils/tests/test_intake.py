@@ -1,7 +1,6 @@
 import os
 import pytest
 import pandas as pd
-import prepare_import_batch
 from jax_omeroutils import intake
 
 
@@ -137,18 +136,3 @@ def test_ImportBatch_write_files(tmp_path):
     assert os.path.exists(tmp_path / 'files.tsv')
     assert os.path.exists(tmp_path / 'import_md.json')
     assert os.path.exists(tmp_path / 'import.yml')
-
-
-# Test scripts
-def test_prepare_import_batch_py(tmp_path):
-    d = _tmp_builder(tmp_path, 5)
-    prepare_import_batch.main(d, '/test/path', 'djme', 'rit')
-    assert os.path.exists(tmp_path / 'files.tsv')
-    assert os.path.exists(tmp_path / 'import_md.json')
-    assert os.path.exists(tmp_path / 'import.yml')
-
-
-def test_prepare_import_batch_py_wproblem(tmp_path):
-    d = _tmp_builder(tmp_path, 4)
-    prepare_import_batch.main(d, '/test/path', 'djme', 'rit')
-    assert not os.path.exists(tmp_path / 'files.tsv')
