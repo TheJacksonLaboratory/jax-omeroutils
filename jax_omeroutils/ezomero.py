@@ -296,7 +296,7 @@ def get_image(conn, image_id, no_pixels=False, start_coords=None,
     >>> im_object.getId()
     314
     """
-    pixels = None
+    pixel_view = None
     image = conn.getObject('Image', image_id)
     size_x = image.getSizeX()
     size_y = image.getSizeY()

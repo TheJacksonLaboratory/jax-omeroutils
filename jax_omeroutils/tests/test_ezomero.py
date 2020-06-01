@@ -111,11 +111,9 @@ def project_structure(conn, timestamp, image_fixture):
 def test_omero_connection(conn, omero_params):
     assert conn.getUser().getName() == omero_params[0]
 
-# test posts
-# def test_post_map_annotation(conn):
-#     pid = ezomero.post_project(conn, "Map Ann proj")
-#     map_ann_id = ezomero.post_map_annotation(conn, )
 
+# Test posts
+############
 
 def test_post_dataset(conn, project_structure, timestamp):
     # Orphaned dataset, with descripion
@@ -150,6 +148,19 @@ def test_post_image(conn, project_structure, timestamp, image_fixture):
                        deleteChildren=True, wait=True)
 
 
+def test_post_get_map_annotation(conn, project_structure):
+    # This test both ezomero.post_map_annotation and ezomero.get_map_annotation
+    kv = {"key1": "value1",
+          "key2": "value2"}
+    ns = "jax.org/omeroutils/tests/v0"
+    im_id = project_structure['image_ids'][0]
+    map_ann_id = ezomero.post_map_annotation(conn, "Image", im_id, kv, ns)
+    kv_pairs = ezomero.get_map_annotation(conn, map_ann_id)
+    assert kv_pairs["key2"] == "value2"
+    conn.deleteObjects("Annotation", [map_ann_id], deleteAnns=True,
+                       deleteChildren=True, wait=True)
+
+
 def test_post_project(conn, timestamp):
     # No description
     new_proj = "test_post_project_" + timestamp
@@ -172,7 +183,31 @@ def test_post_project_type(conn):
         _ = ezomero.post_project(conn, '123', description=1245)
 
 
-# test gets
+# Test gets
+###########
+
+def test_get_image(conn, project_structure):
+    im_id = project_structure['image_ids'][0]
+    # test default
+    im, im_arr = ezomero.get_image(conn, im_id)
+    assert im.getId() == im_id
+    assert im_arr.shape == (1, 20, 200, 200, 3)
+
+    # test xyzct
+    im, im_arr = ezomero.get_image(conn, im_id, xyzct=True)
+    assert im_arr.shape == (200, 200, 20, 3, 1)
+
+    # test no pixels
+    im, im_arr = ezomero.get_image(conn, im_id, no_pixels=True)
+    assert im_arr is None
+
+    # test crop
+    im, im_arr = ezomero.get_image(conn, im_id,
+                                   start_coords=(101, 101, 10, 0, 0),
+                                   axis_lengths=(10, 10, 3, 3, 1))
+    assert im_arr.shape == (1, 3, 10, 10, 3)
+    assert np.allclose(im_arr[0, 0, 0, 0, :], [0, 0, 255])
+
 
 def test_get_image_ids(conn, project_structure):
     # Based on Project ID
@@ -223,3 +258,55 @@ def test_get_image_ids(conn, project_structure):
     im_ids2 = ezomero.get_image_ids(conn, dataset=999999)
     assert len(im_ids) == 0
     assert len(im_ids2) == 0
+
+
+def test_get_map_annotation_ids(conn, project_structure):
+    kv = {"key1": "value1",
+          "key2": "value2"}
+    ns = "jax.org/omeroutils/tests/v0"
+    im_id = project_structure['image_ids'][0]
+    map_ann_id = ezomero.post_map_annotation(conn, "Image", im_id, kv, ns)
+    map_ann_id2 = ezomero.post_map_annotation(conn, "Image", im_id, kv, ns)
+    map_ann_id3 = ezomero.post_map_annotation(conn, "Image", im_id, kv, ns)
+    ns2 = "different namespace"
+    map_ann_id4 = ezomero.post_map_annotation(conn, "Image", im_id, kv, ns2)
+    map_ann_ids = ezomero.get_map_annotation_ids(conn, "Image", im_id, ns=ns)
+
+    good_ids = [map_ann_id, map_ann_id2, map_ann_id3]
+    assert all([mid in map_ann_ids for mid in good_ids])
+    assert map_ann_id4 not in map_ann_ids
+    conn.deleteObjects("Annotation",
+                       [map_ann_id, map_ann_id2, map_ann_id3, map_ann_id4],
+                       deleteAnns=True,
+                       deleteChildren=True,
+                       wait=True)
+
+
+def test_get_group_id(conn):
+    gid = ezomero.get_group_id(conn, 'system')
+    assert gid == 0
+    gid = ezomero.get_group_id(conn, 'user')
+    assert gid == 1
+    gid = ezomero.get_group_id(conn, 'guest')
+    assert gid == 2
+
+
+# Test puts
+###########
+
+def test_put_map_annotation(conn, project_structure):
+    kv = {"key1": "value1",
+          "key2": "value2"}
+    ns = "jax.org/omeroutils/tests/v0"
+    im_id = project_structure['image_ids'][0]
+    map_ann_id = ezomero.post_map_annotation(conn, "Image", im_id, kv, ns)
+    kv = {"key1": "changed1",
+          "key2": "value2"}
+    ezomero.put_map_annotation(conn, map_ann_id, kv)
+    kv_pairs = ezomero.get_map_annotation(conn, map_ann_id)
+    assert kv_pairs['key1'] == kv['key1']
+    conn.deleteObjects("Annotation",
+                       [map_ann_id],
+                       deleteAnns=True,
+                       deleteChildren=True,
+                       wait=True)
