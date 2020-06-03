@@ -17,9 +17,9 @@ def _make_md():
 
 def test_write_files_tsv(tmp_path):
     md = _make_md()
-    fp = filewriter.write_files_tsv(md, str(tmp_path), '/hyperfile/omero/test')
+    fp = filewriter.write_files_tsv(md, tmp_path, '/hyperfile/omero/test')
     fp2 = tmp_path / "files.tsv"
-    assert fp == str(fp2)
+    assert fp == fp2
     md2 = pd.read_csv(fp, sep='\t', header=None)
     assert md2.iloc[0, 0] == ('Project:name:project 1/'
                               'Dataset:name:new data')
@@ -27,19 +27,19 @@ def test_write_files_tsv(tmp_path):
 
 
 def test_write_import_yml(tmp_path):
-    fp = filewriter.write_import_yml(str(tmp_path), '/hyperfile/omero/test')
+    fp = filewriter.write_import_yml(tmp_path, '/hyperfile/omero/test')
     with open(fp, 'r') as f:
         lines = f.readlines()
     assert lines[1] == 'path: \"/hyperfile/omero/test/files.tsv\"\n'
-    assert fp == str(tmp_path / 'import.yml')
+    assert fp == tmp_path / 'import.yml'
 
 
 def test_write_import_md_json(tmp_path):
     md = _make_md()
-    fp = filewriter.write_import_md_json(md, str(tmp_path),
+    fp = filewriter.write_import_md_json(md, tmp_path,
                                          'admin', "Research IT")
     md_fp = tmp_path / 'import_md.json'
-    assert str(md_fp) == fp
+    assert md_fp == fp
     with open(md_fp, 'r') as f:
         md2 = json.load(f)
     assert md2['OMERO_group'] == 'Research IT'

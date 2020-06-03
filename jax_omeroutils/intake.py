@@ -31,7 +31,7 @@ def find_md_file(import_directory):
 
     Parameters
     ----------
-    import_directory : str or ``pathlib.Path`` object
+    import_directory : str or pathlike object
         The directory in which to look for a metadata file.
 
     Returns
@@ -76,7 +76,7 @@ def load_md_from_file(md_filepath):
 
     Parameters
     ----------
-    md_filepath : str or None
+    md_filepath : str, pathlike object, or None
         Path to file to attempt to load.
 
     Returns
@@ -125,8 +125,7 @@ class ImportBatch:
     ----------
     import_path : str or pathlike object
         Path to the directory containing the images to be imported. Files will
-        be written to this directory. If supplying string, do not include
-        trailing slash!
+        be written to this directory.
     user : str
         Shortname of OMERO user who will own the images.
     group : str
@@ -137,7 +136,7 @@ class ImportBatch:
 
     Attributes
     ----------
-    import_path : str
+    import_path : ``pathlib.Path`` object
         See description in Parameters section.
     import_type : {'flat', 'plate'}
         Method to use for handling metadata.
@@ -162,7 +161,7 @@ class ImportBatch:
     valid_batch : boolean
         Flag to set if import batch passes all checks for validity
         (`self.validate_batch`)
-    target_path : str or None
+    target_path : ``pathlib.Path`` object or None
         Path to directory where images will reside on OMERO server. This path
         will be used to set up the bulk import files for OMERO and must be
         correct, or import will fail. Defaults to `None` on initialization and
@@ -187,7 +186,7 @@ class ImportBatch:
     """
 
     def __init__(self, import_path, user, group, import_type='flat'):
-        self.import_path = str(import_path)
+        self.import_path = pathlib.Path(import_path)
         self.import_type = import_type
         self.user = user  # shortname (for OMERO)
         self.group = group  # OMERO group
@@ -230,7 +229,7 @@ class ImportBatch:
            path will be used to set up the bulk import files for OMERO and
            must be correct, or import will fail.
         """
-        self.target_path = str(fp)
+        self.target_path = pathlib.Path(fp)
 
     def write_files(self):
         """Writes import.yml, files.tsv, and import_md.json
@@ -297,7 +296,7 @@ class ImportBatch:
             self.valid_batch = False
 
         # Check for file mismatching
-        file_list_dir = os.listdir(self.import_path)
+        file_list_dir = [f.name for f in self.import_path.iterdir()]
         file_list_md = self.md.filename.values
         for f in file_list_dir:
             if f.endswith(tuple(MD_VALID_TYPES.keys())):

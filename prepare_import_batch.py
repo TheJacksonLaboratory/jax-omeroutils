@@ -6,7 +6,7 @@ from jax_omeroutils import intake
 def main(basepath, targetpath, user, group):
     batch = intake.ImportBatch(basepath, user, group)
     batch.validate_batch()
-    targetpath = str(Path(targetpath))  # sanitize; need to switch to pathlib!
+    targetpath = Path(targetpath)
     batch.set_target_path(targetpath)
     batch.write_files()
     return
