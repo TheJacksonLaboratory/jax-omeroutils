@@ -49,7 +49,7 @@ def test_load_md_good(tmp_path):
 def test_find_md_good(tmp_path):
     d = _tmp_builder(tmp_path, 5)
     md = intake.find_md_file(d)
-    assert md == str(d / 'md.tsv')
+    assert md == d / 'md.tsv'
 
 
 def test_find_md_no_md(tmp_path):

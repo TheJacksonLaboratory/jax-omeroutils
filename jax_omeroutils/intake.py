@@ -31,12 +31,12 @@ def find_md_file(import_directory):
 
     Parameters
     ----------
-    import_directory : str
+    import_directory : str or ``pathlib.Path`` object
         The directory in which to look for a metadata file.
 
     Returns
     -------
-    md_filepath : str
+    md_filepath : ``pathlib.Path`` object
        Path to the "valid-looking" spreadsheet file. If no appropriate file
        is found, returns `None`.
 
@@ -54,10 +54,11 @@ def find_md_file(import_directory):
     >>> print(f'Import metadata file found at: {fp}')
     /dropbox/dropbox/djme_20200101/import_me.xlsx
     """
+    import_directory = pathlib.Path(import_directory)
     allowed_ftypes = tuple(MD_VALID_TYPES.keys())
     md_files = []
-    for f in os.listdir(import_directory):
-        if f.lower().endswith(allowed_ftypes):
+    for f in import_directory.iterdir():
+        if f.suffix.endswith(allowed_ftypes):
             md_files.append(f)
     if len(md_files) == 0:
         logging.error('No valid metadata file found')
@@ -66,8 +67,7 @@ def find_md_file(import_directory):
         logging.error('>1 metadata files found, can not process')
         md_filepath = None
     else:
-        md_filename = md_files[0]
-        md_filepath = os.path.join(import_directory, md_filename)
+        md_filepath = md_files[0]
     return md_filepath
 
 
