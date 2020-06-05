@@ -643,12 +643,8 @@ def print_map_annotation(conn, map_ann_id):
     ----------
     conn : ``omero.gateway.BlitzGateway`` object
         OMERO connection.
-
-    Returns
-    -------
-
-    Examples
-    --------
+    map_ann_id : int
+        Id of the MapAnnotation to be displayed.
     """
     map_ann = conn.getObject('MapAnnotation', map_ann_id)
     print(f'Map Annotation: {map_ann_id}')
@@ -656,3 +652,52 @@ def print_map_annotation(conn, map_ann_id):
     print('Key-Value Pairs:')
     for k, v in map_ann.getValue():
         print(f'\t{k}:\t{v}')
+
+
+def print_groups(conn):
+    """Print all available Groups with IDs.
+
+    Parameters
+    ----------
+    conn : ``omero.gateway.BlitzGateway`` object
+        OMERO connection.
+    """
+    print("Groups:")
+    for g in conn.listGroups():
+        print(f'\t{g.getName()}:\t{g.getId()}')
+
+
+def print_projects(conn):
+    """Print all available Projects.
+
+    Parameters
+    ----------
+    conn : ``omero.gateway.BlitzGateway`` object
+        OMERO connection.
+    """
+    print("Projects:")
+    for p in conn.listProjects():
+        print(f'\t{p.getName()}:\t{p.getId()}')
+
+
+def print_datasets(conn, project=None):
+    """Print all available Datasets for a given Project.
+
+    Parameters
+    ----------
+    conn : ``omero.gateway.BlitzGateway`` object
+        OMERO connection.
+    project : int or `None`, optional
+        ID of Project for which to list datasets. If project is `None`,
+        orphans are listed.
+    """
+    if project is not None:
+        p = conn.getObject("Project", project)
+        datasets = p.listChildren()
+        print(f'Datasets in Project \"{p.getName()}\":')
+    else:
+        datasets = conn.listOrphans("Dataset")
+        print(f'Orphaned Datsets:')
+
+    for d in datasets:
+        print(f"\t{d.getName()}:\t{d.getId()}")
