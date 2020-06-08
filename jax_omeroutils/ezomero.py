@@ -303,6 +303,7 @@ def get_image(conn, image_id, no_pixels=False, start_coords=None,
     size_z = image.getSizeZ()
     size_c = image.getSizeC()
     size_t = image.getSizeT()
+    pixels_dtype = image.getPixelsType()
 
     if start_coords is None:
         start_coords = (0, 0, 0, 0, 0)
@@ -329,7 +330,7 @@ def get_image(conn, image_id, no_pixels=False, start_coords=None,
                            axis_lengths[1],
                            axis_lengths[0],
                            axis_lengths[3]]
-        pixels = np.zeros(reordered_sizes)
+        pixels = np.zeros(reordered_sizes, dtype=pixels_dtype)
 
         zct_list = []
         for z in range(start_coords[2],

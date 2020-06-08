@@ -192,6 +192,7 @@ def test_get_image(conn, project_structure):
     im, im_arr = ezomero.get_image(conn, im_id)
     assert im.getId() == im_id
     assert im_arr.shape == (1, 20, 200, 200, 3)
+    assert im.getPixelsType() == im_arr.dtype
 
     # test xyzct
     im, im_arr = ezomero.get_image(conn, im_id, xyzct=True)
