@@ -209,6 +209,20 @@ def test_get_image(conn, project_structure):
     assert im_arr.shape == (1, 3, 10, 10, 3)
     assert np.allclose(im_arr[0, 0, 0, 0, :], [0, 0, 255])
 
+    # test crop with padding
+    im, im_arr = ezomero.get_image(conn, im_id,
+                                   start_coords=(195, 195, 18, 0, 0),
+                                   axis_lengths=(10, 10, 3, 4, 3),
+                                   pad=True)
+    assert im_arr.shape == (3, 3, 10, 10, 4)
+
+    # test that IndexError comes up when pad=False
+    with pytest.raises(IndexError):
+        im, im_arr = ezomero.get_image(conn, im_id,
+                                       start_coords=(195, 195, 18, 0, 0),
+                                       axis_lengths=(10, 10, 3, 4, 3),
+                                       pad=False)
+
 
 def test_get_image_ids(conn, project_structure):
     # Based on Project ID

@@ -244,7 +244,7 @@ def post_project(conn, project_name, description=None):
 
 # gets
 def get_image(conn, image_id, no_pixels=False, start_coords=None,
-              axis_lengths=None, xyzct=False):
+              axis_lengths=None, xyzct=False, pad=False):
     """Get omero image object along with pixels as a numpy array.
 
     Parameters
@@ -267,6 +267,10 @@ def get_image(conn, image_id, no_pixels=False, start_coords=None,
     xyzct : bool, optional
         Option to return array with dimensional ordering XYZCT. If `False`, the
         ``skimage`` preferred ordering will be used (TZYXC). Default is False.
+    pad : bool, optional
+        If `axis_lengths` values would result in out-of-bounds indices, pad
+        pixel array with zeros. Otherwise, such an operation will raise an
+        exception. Ignored if `no_pixels` is True.
 
     Returns
     -------
@@ -304,15 +308,17 @@ def get_image(conn, image_id, no_pixels=False, start_coords=None,
     size_c = image.getSizeC()
     size_t = image.getSizeT()
     pixels_dtype = image.getPixelsType()
+    orig_sizes = [size_x, size_y, size_z, size_c, size_t]
 
     if start_coords is None:
         start_coords = (0, 0, 0, 0, 0)
+
     if axis_lengths is None:
-        axis_lengths = (size_x - start_coords[0],
-                        size_y - start_coords[1],
-                        size_z - start_coords[2],
-                        size_c - start_coords[3],
-                        size_t - start_coords[4])
+        axis_lengths = (orig_sizes[0] - start_coords[0],  # X
+                        orig_sizes[1] - start_coords[1],  # Y
+                        orig_sizes[2] - start_coords[2],  # Z
+                        orig_sizes[3] - start_coords[3],  # C
+                        orig_sizes[4] - start_coords[4])  # T
 
     if type(start_coords) not in (list, tuple):
         raise TypeError('start_coords must be supplied as list or tuple')
@@ -332,6 +338,20 @@ def get_image(conn, image_id, no_pixels=False, start_coords=None,
                            axis_lengths[3]]
         pixels = np.zeros(reordered_sizes, dtype=pixels_dtype)
 
+        # check here if you need to trim the axis_lengths, trim if necessary
+        overhangs = [(l + sc) - osz
+                     for l, sc, osz
+                     in zip(axis_lengths,
+                            start_coords,
+                            orig_sizes)]
+        overhangs = [np.max((0, o)) for o in overhangs]
+        if any([x > 0 for x in overhangs]) & (pad is False):
+            raise IndexError('Attempting to access out-of-bounds pixel. '
+                             'Either adjust axis_lengths or use pad=True')
+
+        axis_lengths = [l - o for l, o in zip(axis_lengths, overhangs)]
+
+        # get pixels
         zct_list = []
         for z in range(start_coords[2],
                        start_coords[2] + axis_lengths[2]):
@@ -356,7 +376,7 @@ def get_image(conn, image_id, no_pixels=False, start_coords=None,
             z = zct_coords[0] - start_coords[2]
             c = zct_coords[1] - start_coords[3]
             t = zct_coords[2] - start_coords[4]
-            pixels[t, z, :, :, c] = plane.T
+            pixels[t, z, :axis_lengths[1], :axis_lengths[0], c] = plane.T
 
         if xyzct is True:
             pixel_view = np.moveaxis(pixels, [0, 1, 2, 3, 4], [4, 2, 1, 0, 3])
