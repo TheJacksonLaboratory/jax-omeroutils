@@ -676,16 +676,27 @@ def print_map_annotation(conn, map_ann_id):
 
 
 def print_groups(conn):
-    """Print all available Groups with IDs.
+    """Print all Groups with IDs and membership info.
 
     Parameters
     ----------
     conn : ``omero.gateway.BlitzGateway`` object
         OMERO connection.
     """
+    user_id = conn.getUser().getId()
     print("Groups:")
     for g in conn.listGroups():
-        print(f'\t{g.getName()}:\t{g.getId()}')
+        if g.getId() not in [0, 1, 2]:
+            owners, members = g.groupSummary()
+            owner_ids = [e.getId() for e in owners]
+            member_ids = [e.getId() for e in members]
+            if user_id in owner_ids:
+                group_status = 'owner'
+            elif user_id in member_ids:
+                group_status = 'member'
+            else:
+                group_status = ''
+            print(f'{g.getName():>25}: {g.getId()}\t{group_status}')
 
 
 def print_projects(conn):
@@ -722,3 +733,39 @@ def print_datasets(conn, project=None):
 
     for d in datasets:
         print(f"\t{d.getName()}:\t{d.getId()}")
+
+
+# functions for managing connection context and service options.
+
+def set_group(conn, group_id):
+    """Safely switch OMERO group.
+
+    This function will change the user's current group to that specified by
+    `group_id`, but only if the user is a member of that group. This is a
+    "safer" way to do this than ``conn.SERVICE_OPTS.setOmeroGroup``, which will
+    allow switching to a group that a user does not have permissions, which can
+    lead to server-side errors.
+
+    Parameters
+    ----------
+    conn : ``omero.gateway.BlitzGateway`` object
+        OMERO connection.
+    group_id : int
+        The id of the group to switch to.
+
+    Returns
+    -------
+    change_status : bool
+        Returns `True` if group is changed, otherwise returns `False`.
+    """
+    user_id = conn.getUser().getId()
+    g = conn.getObject("ExperimenterGroup", group_id)
+    owners, members = g.groupSummary()
+    owner_ids = [e.getId() for e in owners]
+    member_ids = [e.getId() for e in members]
+    if (user_id in owner_ids) or (user_id in member_ids):
+        conn.SERVICE_OPTS.setOmeroGroup(group_id)
+        return True
+    else:
+        logging.warning(f'User {user_id} is not a member of Group {group_id}')
+        return False
