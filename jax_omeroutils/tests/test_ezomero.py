@@ -3,6 +3,11 @@ import numpy as np
 from datetime import datetime
 from jax_omeroutils import ezomero
 from omero.gateway import BlitzGateway
+from omero.gateway import ScreenWrapper, PlateWrapper
+from omero.model import ScreenI, PlateI, WellI, WellSampleI, ImageI
+from omero.model import ScreenPlateLinkI
+from omero.rtypes import rint
+
 
 # we can change this later
 @pytest.fixture(scope="session")
@@ -26,10 +31,10 @@ def conn(omero_params):
 
 @pytest.fixture(scope='session')
 def image_fixture():
-    test_image = np.zeros((200, 200, 20, 3, 1), dtype=np.uint8)
+    test_image = np.zeros((200, 201, 20, 3, 1), dtype=np.uint8)
     test_image[0:100, 0:100, 0:10, 0, :] = 255
     test_image[0:100, 0:100, 11:20, 1, :] = 255
-    test_image[101:200, 101:200, :, 2, :] = 255
+    test_image[101:200, 101:201, :, 2, :] = 255
     return test_image
 
 
@@ -43,69 +48,66 @@ def project_structure(conn, timestamp, image_fixture):
     """
     Project              Dataset           Image
     -------              -------           -----
-    main_proj   ---->    main_ds    ---->   im0
-                ---->    sec_ds     ---->   im1
-                ---->    dupe1_ds(1)---->   im2
+    proj   ---->    ds    ---->            im0
 
-    sec_proj    ---->    dupe1_ds(2)---->   im3
-
-    dupe_proj(1)---->    dupe2_ds(1)---->   im4
-
-    dupe_proj(2)---->    dupe2_ds(2)---->   im5
+    Screen        Plate         Well          Image
+    ------        -----         ----          -----
+    screen ---->  plate ---->   well   ----->  im1
     """
-    main_proj_name = "main_proj_" + timestamp
-    main_proj_id = ezomero.post_project(conn, main_proj_name)
 
-    sec_proj_name = "sec_proj_" + timestamp
-    sec_proj_id = ezomero.post_project(conn, sec_proj_name)
+    proj_name = "proj_" + timestamp
+    proj_id = ezomero.post_project(conn, proj_name)
 
-    dupe_proj_name = "dupe_proj_" + timestamp
-    dupe_proj_id1 = ezomero.post_project(conn, dupe_proj_name)
-    dupe_proj_id2 = ezomero.post_project(conn, dupe_proj_name)
+    ds_name = "ds_" + timestamp
+    ds_id = ezomero.post_dataset(conn, ds_name,
+                                 project_id=proj_id)
 
-    main_ds_name = "main_ds_" + timestamp
-    main_ds_id = ezomero.post_dataset(conn, main_ds_name,
-                                      project_id=main_proj_id)
+    im_name = 'im_' + timestamp
+    im_id = ezomero.post_image(conn, image_fixture, im_name,
+                               dataset_id=ds_id)
 
-    sec_ds_name = "sec_ds_" + timestamp
-    sec_ds_id = ezomero.post_dataset(conn, sec_ds_name,
-                                     project_id=main_proj_id)
+    update_service = conn.getUpdateService()
 
-    dupe1_ds_name = "dupe1_ds_" + timestamp
-    dupe1_ds_id1 = ezomero.post_dataset(conn, dupe1_ds_name,
-                                        project_id=main_proj_id)
-    dupe1_ds_id2 = ezomero.post_dataset(conn, dupe1_ds_name,
-                                        project_id=sec_proj_id)
+    # Create Screen
+    screen_name = "screen_" + timestamp
+    screen = ScreenWrapper(conn, ScreenI())
+    screen.setName(screen_name)
+    screen.save()
+    screen_id = screen.getId()
 
-    dupe2_ds_name = "dupe2_ds_" + timestamp
-    dupe2_ds_id1 = ezomero.post_dataset(conn, dupe2_ds_name,
-                                        project_id=dupe_proj_id1)
-    dupe2_ds_id2 = ezomero.post_dataset(conn, dupe2_ds_name,
-                                        project_id=dupe_proj_id2)
+    # Create Plate
+    plate_name = "plate_" + timestamp
+    plate = PlateWrapper(conn, PlateI())
+    plate.setName(plate_name)
+    plate.save()
+    plate_id = plate.getId()
+    link = ScreenPlateLinkI()
+    link.setParent(ScreenI(screen_id, False))
+    link.setChild(PlateI(plate_id, False))
+    update_service.saveObject(link)
 
-    image_ids = []
-    for i, dsid in enumerate([main_ds_id,
-                              sec_ds_id,
-                              dupe1_ds_id1,
-                              dupe1_ds_id2,
-                              dupe2_ds_id1,
-                              dupe2_ds_id2]):
-        im_name = f'im{i}_' + timestamp
-        im_id = ezomero.post_image(conn, image_fixture, im_name,
-                                   dataset_id=dsid)
-        image_ids.append(im_id)
+    # Create Well
+    well = WellI()
+    well.setPlate(PlateI(plate_id, False))
+    well.setColumn(rint(1))
+    well.setRow(rint(1))
+    well.setPlate(PlateI(plate_id, False))
 
-    return({'main_proj': main_proj_id,
-            'sec_proj': sec_ds_id,
-            'dupe_proj': [dupe_proj_id1,
-                          dupe_proj_id2],
-            'main_ds': main_ds_id,
-            'sec_ds': sec_ds_id,
-            'dupe1_ds': [dupe1_ds_id1,
-                         dupe1_ds_id2],
-            'dupe2_ds': [dupe2_ds_id1,
-                         dupe2_ds_id2],
-            'image_ids': image_ids})
+    # Create Well Sample with Image
+    ws = WellSampleI()
+    im_id1 = ezomero.post_image(conn, image_fixture, "well image")
+    ws.setImage(ImageI(im_id1, False))
+    well.addWellSample(ws)
+    well_obj = update_service.saveAndReturnObject(well)
+    well_id = well_obj.getId().getValue()
+
+    return({'proj': proj_id,
+            'ds': ds_id,
+            'im': im_id,
+            'screen': screen_id,
+            'plate': plate_id,
+            'well': well_id,
+            'im1': im_id1})
 
 
 def test_omero_connection(conn, omero_params):
@@ -124,7 +126,7 @@ def test_post_dataset(conn, project_structure, timestamp):
 
     # Dataset in project, no description
     ds_test_name2 = 'test_post_dataset2_' + timestamp
-    pid = project_structure['main_proj']
+    pid = project_structure['proj']
     did2 = ezomero.post_dataset(conn, ds_test_name2, project_id=pid)
     ds = conn.getObjects("Dataset", opts={'project': pid})
     ds_names = [d.getName() for d in ds]
@@ -138,7 +140,7 @@ def test_post_image(conn, project_structure, timestamp, image_fixture):
     image_name = 'test_post_image_' + timestamp
     im_id = ezomero.post_image(conn, image_fixture, image_name,
                                description='This is an image',
-                               dataset_id=project_structure["main_ds"])
+                               dataset_id=project_structure["ds"])
     assert conn.getObject("Image", im_id).getName() == image_name
 
     # Post orphaned image
@@ -153,7 +155,7 @@ def test_post_get_map_annotation(conn, project_structure):
     kv = {"key1": "value1",
           "key2": "value2"}
     ns = "jax.org/omeroutils/tests/v0"
-    im_id = project_structure['image_ids'][0]
+    im_id = project_structure['im']
     map_ann_id = ezomero.post_map_annotation(conn, "Image", im_id, kv, ns)
     kv_pairs = ezomero.get_map_annotation(conn, map_ann_id)
     assert kv_pairs["key2"] == "value2"
@@ -187,16 +189,16 @@ def test_post_project_type(conn):
 ###########
 
 def test_get_image(conn, project_structure):
-    im_id = project_structure['image_ids'][0]
+    im_id = project_structure['im']
     # test default
     im, im_arr = ezomero.get_image(conn, im_id)
     assert im.getId() == im_id
-    assert im_arr.shape == (1, 20, 200, 200, 3)
+    assert im_arr.shape == (1, 20, 201, 200, 3)
     assert im.getPixelsType() == im_arr.dtype
 
     # test xyzct
     im, im_arr = ezomero.get_image(conn, im_id, xyzct=True)
-    assert im_arr.shape == (200, 200, 20, 3, 1)
+    assert im_arr.shape == (200, 201, 20, 3, 1)
 
     # test no pixels
     im, im_arr = ezomero.get_image(conn, im_id, no_pixels=True)
@@ -212,9 +214,9 @@ def test_get_image(conn, project_structure):
     # test crop with padding
     im, im_arr = ezomero.get_image(conn, im_id,
                                    start_coords=(195, 195, 18, 0, 0),
-                                   axis_lengths=(10, 10, 3, 4, 3),
+                                   axis_lengths=(10, 11, 3, 4, 3),
                                    pad=True)
-    assert im_arr.shape == (3, 3, 10, 10, 4)
+    assert im_arr.shape == (3, 3, 11, 10, 4)
 
     # test that IndexError comes up when pad=False
     with pytest.raises(IndexError):
@@ -225,53 +227,22 @@ def test_get_image(conn, project_structure):
 
 
 def test_get_image_ids(conn, project_structure):
-    # Based on Project ID
-    image_ids = project_structure["image_ids"]
-    main_proj_id = project_structure['main_proj']
-    im_ids = ezomero.get_image_ids(conn, project=main_proj_id)
-    assert all([i in im_ids for i in image_ids[:3]])
-    assert not any([i in im_ids for i in image_ids[3:]])
-
     # Based on dataset ID
-    main_ds_id = project_structure['main_ds']
+    main_ds_id = project_structure['ds']
+    im_id = project_structure['im']
     im_ids = ezomero.get_image_ids(conn, dataset=main_ds_id)
-    assert im_ids[0] == image_ids[0]
+    assert im_ids[0] == im_id
     assert len(im_ids) == 1
 
-    # Based on unique dataset name
-    ds_name = conn.getObject('Dataset', project_structure['sec_ds']).getName()
-    im_ids = ezomero.get_image_ids(conn, dataset=ds_name)
-    assert im_ids[0] == image_ids[1]
+    # Based on well ID
+    well_id = project_structure['well']
+    im_id1 = project_structure['im1']
+    im_ids = ezomero.get_image_ids(conn, well=well_id)
+    assert im_ids[0] == im_id1
     assert len(im_ids) == 1
-
-    # Based on duplicate dataset name
-    ds_list = conn.getObjects('Dataset', project_structure['dupe1_ds'])
-    ds_name = list(ds_list)[0].getName()
-    im_ids = ezomero.get_image_ids(conn, dataset=ds_name)
-    assert all([i in im_ids for i in image_ids[2:4]])
-    bad_list = [image_ids[0], image_ids[1], image_ids[4], image_ids[5]]
-    assert not any([i in im_ids for i in bad_list])
-
-    # Based on unique project name, duplicate dataset name
-    pj = conn.getObject('Project', project_structure['main_proj'])
-    pj_name = pj.getName()
-    im_ids = ezomero.get_image_ids(conn, project=pj_name, dataset=ds_name)
-    assert im_ids[0] == image_ids[2]
-    assert len(im_ids) == 1
-
-    # Based on duplicate project and dataset names
-    ds_list = conn.getObjects('Dataset', project_structure['dupe2_ds'])
-    pj_list = conn.getObjects('Project', project_structure['dupe_proj'])
-    ds_name = list(ds_list)[0].getName()
-    pj_name = list(pj_list)[0].getName()
-    im_ids = ezomero.get_image_ids(conn, project=pj_name, dataset=ds_name)
-    assert all([i in im_ids for i in image_ids[4:]])
-    assert not any([i in im_ids for i in image_ids[:4]])
 
     # Return nothing on bad input
-    im_ids = ezomero.get_image_ids(conn, project="ajhasfkjhg")
     im_ids2 = ezomero.get_image_ids(conn, dataset=999999)
-    assert len(im_ids) == 0
     assert len(im_ids2) == 0
 
 
@@ -279,7 +250,7 @@ def test_get_map_annotation_ids(conn, project_structure):
     kv = {"key1": "value1",
           "key2": "value2"}
     ns = "jax.org/omeroutils/tests/v0"
-    im_id = project_structure['image_ids'][0]
+    im_id = project_structure['im']
     map_ann_id = ezomero.post_map_annotation(conn, "Image", im_id, kv, ns)
     map_ann_id2 = ezomero.post_map_annotation(conn, "Image", im_id, kv, ns)
     map_ann_id3 = ezomero.post_map_annotation(conn, "Image", im_id, kv, ns)
@@ -313,7 +284,7 @@ def test_put_map_annotation(conn, project_structure):
     kv = {"key1": "value1",
           "key2": "value2"}
     ns = "jax.org/omeroutils/tests/v0"
-    im_id = project_structure['image_ids'][0]
+    im_id = project_structure['im']
     map_ann_id = ezomero.post_map_annotation(conn, "Image", im_id, kv, ns)
     kv = {"key1": "changed1",
           "key2": "value2"}
