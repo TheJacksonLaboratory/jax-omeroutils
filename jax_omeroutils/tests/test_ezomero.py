@@ -26,10 +26,10 @@ def conn(omero_params):
 
 @pytest.fixture(scope='session')
 def image_fixture():
-    test_image = np.zeros((200, 200, 20, 3, 1), dtype=np.uint8)
+    test_image = np.zeros((200, 201, 20, 3, 1), dtype=np.uint8)
     test_image[0:100, 0:100, 0:10, 0, :] = 255
     test_image[0:100, 0:100, 11:20, 1, :] = 255
-    test_image[101:200, 101:200, :, 2, :] = 255
+    test_image[101:200, 101:201, :, 2, :] = 255
     return test_image
 
 
@@ -191,12 +191,12 @@ def test_get_image(conn, project_structure):
     # test default
     im, im_arr = ezomero.get_image(conn, im_id)
     assert im.getId() == im_id
-    assert im_arr.shape == (1, 20, 200, 200, 3)
+    assert im_arr.shape == (1, 20, 201, 200, 3)
     assert im.getPixelsType() == im_arr.dtype
 
     # test xyzct
     im, im_arr = ezomero.get_image(conn, im_id, xyzct=True)
-    assert im_arr.shape == (200, 200, 20, 3, 1)
+    assert im_arr.shape == (200, 201, 20, 3, 1)
 
     # test no pixels
     im, im_arr = ezomero.get_image(conn, im_id, no_pixels=True)
@@ -212,9 +212,9 @@ def test_get_image(conn, project_structure):
     # test crop with padding
     im, im_arr = ezomero.get_image(conn, im_id,
                                    start_coords=(195, 195, 18, 0, 0),
-                                   axis_lengths=(10, 10, 3, 4, 3),
+                                   axis_lengths=(10, 11, 3, 4, 3),
                                    pad=True)
-    assert im_arr.shape == (3, 3, 10, 10, 4)
+    assert im_arr.shape == (3, 3, 11, 10, 4)
 
     # test that IndexError comes up when pad=False
     with pytest.raises(IndexError):

@@ -126,7 +126,7 @@ def post_image(conn, image, image_name, description=None, dataset_id=None,
         for z in range(image_sizez):
             for c in range(image_sizec):
                 for t in range(image_sizet):
-                    yield image[:, :, z, c, t]
+                    yield image[:, :, z, c, t].T
 
     new_im = conn.createImageFromNumpySeq(plane_gen(image,
                                                     image_sizez,
@@ -376,7 +376,7 @@ def get_image(conn, image_id, no_pixels=False, start_coords=None,
             z = zct_coords[0] - start_coords[2]
             c = zct_coords[1] - start_coords[3]
             t = zct_coords[2] - start_coords[4]
-            pixels[t, z, :axis_lengths[1], :axis_lengths[0], c] = plane.T
+            pixels[t, z, :axis_lengths[1], :axis_lengths[0], c] = plane
 
         if xyzct is True:
             pixel_view = np.moveaxis(pixels, [0, 1, 2, 3, 4], [4, 2, 1, 0, 3])
