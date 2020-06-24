@@ -6,12 +6,12 @@ from omero.gateway import BlitzGateway
 
 # we can change this later
 @pytest.fixture(scope="session")
-def omero_params():
-    user = 'root'
-    password = 'omero'
-    host = 'localhost'
-    port = 6064
-    secure = True
+def omero_params(request):
+    user = request.config.getoption("--omero-user")
+    password = request.config.getoption("--omero-pass")
+    host = request.config.getoption("--omero-host")
+    port = request.config.getoption("--omero-port")
+    secure = request.config.getoption("--omero-secure")
     return(user, password, host, port, secure)
 
 
