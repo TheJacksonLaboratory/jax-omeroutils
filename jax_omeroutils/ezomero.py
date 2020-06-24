@@ -385,88 +385,57 @@ def get_image(conn, image_id, no_pixels=False, start_coords=None,
     return (image, pixel_view)
 
 
-def get_image_ids(conn, project=None, dataset=None):
+def get_image_ids(conn, dataset=None, well=None):
     """return a list of image ids based on project and dataset
 
     Parameters
     ----------
     conn : ``omero.gateway.BlitzGateway`` object
         OMERO connection.
-    project : str or int, optional
-        Name or ID of Project in which to return image_ids.
-    dataset : str or int, optional
-        Name or ID of Dataset in which to return image_ids.
+    dataset : int, optional
+        ID of Dataset from which to return image IDs.
+    well : int, optional
+        ID of Well from which to return image IDs.
 
     Returns
     -------
     im_ids : list of ints
-        List of image IDs contained in the given Project/Dataset.
+        List of image IDs contained in the given Dataset, Well, or orphans.
 
     Notes
     -----
     User and group information comes from the `conn` object. Be sure to use
-    ``conn.SERVICE_OPTS.setOmeroGroup`` to specify group prior to passing
+    ``ezomero.set_group`` to specify group prior to passing
     the `conn` object to this function.
 
-    If no Project or Dataset is given, orphaned images are returned.
-
-    If only Project is given, images will be returned that belong to all
-    Datasets for that Project.
-
-    If Project/Dataset names are given, note that multiple different
-    Projects/Datasets with the same name can exist in a given group. In this
-    case, all image IDs belonging to all matching Projects/Datasets will be
-    returned.
+    If no Dataset or Well is specified, orphaned images are returned.
 
     Examples
     --------
     Return orphaned images:
     >>> orphans = get_image_ids(conn)
 
-    Return IDs of all images from Project named "Good stuff":
-    >>> good_stuff_ims = get_image_ids(conn, project="Good stuff")
-
-    Return IDs of all images from Dataset names "Bonus" in Project with ID 448:
-    >>> bonus_ims = get_image_ids(conn, project=448, dataset="Bonus")
+    Return IDs of all images from Dataset with ID 448:
+    >>> ds_ims = get_image_ids(conn, dataset=448)
     """
-    if project is not None:
-        if type(project) not in [str, int]:
-            raise TypeError('project must be integer or string')
-
-        if type(project) is int:
-            ps = conn.getObjects('Project', [project])
-        elif type(project) is str:
-            ps = conn.getObjects('project', attributes={'name': project})
-
-    if dataset is not None:
-        if type(dataset) not in [str, int]:
-            raise TypeError('dataset must be integer or string')
-
-        if type(dataset) is int:
-            ds = conn.getObjects('Dataset', [dataset])
-        elif type(dataset) is str:
-            ds = conn.getObjects('Dataset', attributes={'name': dataset})
+    if (dataset is not None) & (well is not None):
+        raise Exception('Dataset and Well can not both be specified')
 
     im_ids = []
-    if (project is None) and (dataset is None):
-        for im in conn.listOrphans('Image'):
-            im_ids.append(im.getId())
-    elif project is None:
-        for d in ds:
-            for im in d.listChildren():
-                im_ids.append(im.getId())
-    elif dataset is None:
-        for p in ps:
-            for d in p.listChildren():
-                for im in d.listChildren():
-                    im_ids.append(im.getId())
-    else:
-        d_ids = [d.getId() for d in ds]
-        for p in ps:
-            for d in p.listChildren():
-                if d.getId() in d_ids:
-                    for im in d.listChildren():
-                        im_ids.append(im.getId())
+    if dataset is not None:
+        if not isinstance(dataset, int):
+            raise TypeError('dataset must be integer')
+        ims = conn.getObjects('Image', opts={'dataset': dataset})
+        im_ids = [im.getId() for im in ims]
+
+    if well is not None:
+        if not isinstance(well, int):
+            raise TypeError('well must be integer')
+        w = conn.getObject('Well', well)
+        well_samples = w.countWellSample()
+        for i in range(0, well_samples):
+            im_ids.append(w.getImage(i).getId())
+
     return im_ids
 
 

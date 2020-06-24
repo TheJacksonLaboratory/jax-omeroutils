@@ -11,6 +11,18 @@ from jax_omeroutils.ezomero import image_has_imported_filename
 CURRENT_MD_NS = 'jax.org/omeroutils/user_submitted/v0'
 
 
+def find_datasets(conn, project_name, dataset_name):
+    ps = conn.getObjects('Project', attributes={'name': project_name})
+    ds = conn.getObjects('Dataset', attributes={'name': dataset_name})
+    ds_target_ids = [d.getId() for d in ds]
+    dataset_ids = []
+    for p in ps:
+        for d in p.listChildren():
+            if d.getId() in ds_target_ids:
+                dataset_ids.append(d.getId())
+    return dataset_ids  # list
+
+
 def main(md_path, admin_user, server, port):
 
     # load metadata
@@ -41,7 +53,8 @@ def main(md_path, admin_user, server, port):
         dataset = str(md.pop('dataset'))
         filename = md.pop('filename')
         ns = CURRENT_MD_NS
-        im_ids = get_image_ids(conn, project=project, dataset=dataset)
+        dataset_ids = find_datasets(conn, project, dataset)
+        im_ids = get_image_ids(conn, project=project, dataset=dataset_ids)
         im_ids = [im_id for im_id in im_ids
                   if image_has_imported_filename(conn, im_id, filename)]
         if len(im_ids) == 0:
