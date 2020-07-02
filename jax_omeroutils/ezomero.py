@@ -436,6 +436,10 @@ def get_image_ids(conn, dataset=None, well=None):
         for i in range(0, well_samples):
             im_ids.append(w.getImage(i).getId())
 
+    if (well is None) & (dataset is None):
+        orphans = conn.listOrphans("Image")
+        im_ids = [im.getId() for im in orphans]
+
     return im_ids
 
 

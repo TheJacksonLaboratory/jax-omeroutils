@@ -40,7 +40,7 @@ def main(md_path, admin_user, server, port):
     annotation_md = md['data']
 
     # set up connection
-    password = getpass(f'Enter password for {admin_user}')
+    password = getpass(f'Enter password for {admin_user}: ')
     conn = BlitzGateway(admin_user, password, host=server, port=port)
     conn.connect()
     group_id = get_group_id(conn, md['OMERO_group'])

@@ -241,6 +241,8 @@ def test_get_image_ids(conn, project_structure):
     assert im_ids[0] == im_id1
     assert len(im_ids) == 1
 
+    # Need to add test for orphans
+
     # Return nothing on bad input
     im_ids2 = ezomero.get_image_ids(conn, dataset=999999)
     assert len(im_ids2) == 0
