@@ -54,8 +54,11 @@ def main(md_path, admin_user, server, port):
         filename = md.pop('filename')
         ns = CURRENT_MD_NS
         dataset_ids = find_datasets(conn, project, dataset)
-        im_ids = get_image_ids(conn, project=project, dataset=dataset_ids)
-        im_ids = [im_id for im_id in im_ids
+        im_id_array = []
+        for did in dataset_ids:
+            im_id_array.append(get_image_ids(conn, dataset=did))
+        im_ids = [im_id for sublist in im_id_array
+                  for im_id in sublist
                   if image_has_imported_filename(conn, im_id, filename)]
         if len(im_ids) == 0:
             print(f"Cannot annotate {project} / {dataset} / {filename}"
