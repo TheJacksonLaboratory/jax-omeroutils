@@ -2,6 +2,8 @@ import logging
 import numpy as np
 from omero.gateway import MapAnnotationWrapper, DatasetWrapper, ProjectWrapper
 from omero.model import MapAnnotationI, DatasetI, ProjectI, ProjectDatasetLinkI
+from omero.rtypes import rlong
+from omero.sys import Parameters
 
 
 # posts
@@ -421,26 +423,51 @@ def get_image_ids(conn, dataset=None, well=None):
     if (dataset is not None) & (well is not None):
         raise Exception('Dataset and Well can not both be specified')
 
-    im_ids = []
+    q = conn.getQueryService()
+    params = Parameters()
+
     if dataset is not None:
         if not isinstance(dataset, int):
             raise TypeError('dataset must be integer')
-        ims = conn.getObjects('Image', opts={'dataset': dataset})
-        im_ids = [im.getId() for im in ims]
-
-    if well is not None:
+        params.map = {"dataset": rlong(dataset)}
+        results = q.projection(
+            "SELECT i.id FROM Dataset d"
+            " JOIN d.imageLinks dil"
+            " JOIN dil.child i"
+            " WHERE d.id=:dataset",
+            params,
+            conn.SERVICE_OPTS
+        )
+    elif well is not None:
         if not isinstance(well, int):
             raise TypeError('well must be integer')
-        w = conn.getObject('Well', well)
-        well_samples = w.countWellSample()
-        for i in range(0, well_samples):
-            im_ids.append(w.getImage(i).getId())
+        params.map = {"well": rlong(well)}
+        results = q.projection(
+            "SELECT i.id FROM Well w"
+            " JOIN w.wellSamples ws"
+            " JOIN ws.image i"
+            " WHERE w.id=:well",
+            params,
+            conn.SERVICE_OPTS
+        )
+    elif (well is None) & (dataset is None):
+        results = q.projection(
+            "SELECT i.id FROM Image i"
+            " WHERE NOT EXISTS ("
+            " SELECT dil FROM DatasetImageLink dil"
+            " WHERE dil.child=i.id"
+            " )"
+            " AND NOT EXISTS ("
+            " SELECT ws from WellSample ws"
+            " WHERE ws.image=i.id"
+            " )",
+            params,
+            conn.SERVICE_OPTS
+        )
+    else:
+        results = []
 
-    if (well is None) & (dataset is None):
-        orphans = conn.listOrphans("Image")
-        im_ids = [im.getId() for im in orphans]
-
-    return im_ids
+    return [r[0].val for r in results]
 
 
 def get_map_annotation_ids(conn, object_type, object_id, ns=None):
