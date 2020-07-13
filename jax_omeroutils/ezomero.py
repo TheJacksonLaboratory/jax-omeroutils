@@ -2,6 +2,7 @@ import logging
 import numpy as np
 from omero.gateway import MapAnnotationWrapper, DatasetWrapper, ProjectWrapper
 from omero.model import MapAnnotationI, DatasetI, ProjectI, ProjectDatasetLinkI
+from omero.model import DatasetImageLinkI, ImageI, ExperimenterI
 from omero.rtypes import rlong, rstring
 from omero.sys import Parameters
 
@@ -53,11 +54,7 @@ def post_dataset(conn, dataset_name, project_id=None, description=None):
     if project_id is not None:
         if type(project_id) is not int:
             raise TypeError('Project ID must be integer')
-
-        link = ProjectDatasetLinkI()
-        link.setParent(ProjectI(project_id, False))
-        link.setChild(DatasetI(dataset.getId(), False))
-        conn.getUpdateService().saveObject(link)
+        link_datasets_to_project(conn, [dataset.getId()], project_id)
 
     return dataset.getId()
 
@@ -564,6 +561,37 @@ def get_group_id(conn, group_name):
     return None
 
 
+def get_user_id(conn, user_name):
+    """Get ID of a user based on user name.
+
+    Must be an exact match. Case sensitive.
+
+    Parameters
+    ----------
+    conn : ``omero.gateway.BlitzGateway`` object
+        OMERO connection.
+    user_name : str
+        Name of the user for which an ID is to be returned.
+
+    Returns
+    -------
+    user_id : int
+        ID of the OMERO user. Returns `None` if group cannot be found.
+
+    Examples
+    --------
+    >>> get_user_id(conn, "jaxl")
+    35
+    """
+    if type(user_name) is not str:
+        raise TypeError('OMERO user name must be a string')
+
+    for u in conn.containedExperimenters(1):
+        if u.getName() == user_name:
+            return u.getId()
+    return None
+
+
 def get_original_filepaths(conn, image_id, fpath='repo'):
     """Get paths to original files for specified image.
 
@@ -681,8 +709,6 @@ def put_map_annotation(conn, map_ann_id, kv_dict, ns=None):
 
 
 # filters
-
-
 def filter_by_filename(conn, im_ids, imported_filename):
     """Filter list of image ids by originalFile name
 
@@ -795,6 +821,33 @@ def image_has_imported_filename(conn, im_id, imported_filename):
         return True
     else:
         return False
+
+
+# linking functions
+def link_images_to_dataset(conn, image_ids, dataset_id):
+    """
+    TODO: WRITE THIS DOCSTRING
+    """
+    user_id = _get_current_user(conn)
+    for im_id in image_ids:
+        link = DatasetImageLinkI()
+        link.setParent(DatasetI(dataset_id, False))
+        link.setChild(ImageI(im_id, False))
+        link.details.owner = ExperimenterI(user_id, False)
+        conn.getUpdateService().saveObject(link, conn.SERVICE_OPTS)
+
+
+def link_datasets_to_project(conn, dataset_ids, project_id):
+    """
+    TODO: WRITE THIS DOCSTRING
+    """
+    user_id = _get_current_user(conn)
+    for did in dataset_ids:
+        link = ProjectDatasetLinkI()
+        link.setParent(ProjectI(project_id, False))
+        link.setChild(DatasetI(did, False))
+        link.details.owner = ExperimenterI(user_id, False)
+        conn.getUpdateService().saveObject(link, conn.SERVICE_OPTS)
 
 
 # prints
@@ -910,3 +963,11 @@ def set_group(conn, group_id):
     else:
         logging.warning(f'User {user_id} is not a member of Group {group_id}')
         return False
+
+
+# private functions
+def _get_current_user(conn):
+    userid = conn.SERVICE_OPTS.getOmeroUser()
+    if userid is None:
+        userid = conn.getUserId()
+    return userid
