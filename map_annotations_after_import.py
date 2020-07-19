@@ -4,9 +4,10 @@ import logging
 import pathlib
 from getpass import getpass
 from omero.gateway import BlitzGateway
+from jax_omeroutils.ezomero import filter_by_filename
 from jax_omeroutils.ezomero import get_group_id, get_image_ids
 from jax_omeroutils.ezomero import post_map_annotation
-from jax_omeroutils.ezomero import image_has_imported_filename
+# from jax_omeroutils.ezomero import image_has_imported_filename
 
 CURRENT_MD_NS = 'jax.org/omeroutils/user_submitted/v0'
 
@@ -57,9 +58,13 @@ def main(md_path, admin_user, server, port):
         im_id_array = []
         for did in dataset_ids:
             im_id_array.append(get_image_ids(conn, dataset=did))
-        im_ids = [im_id for sublist in im_id_array
-                  for im_id in sublist
-                  if image_has_imported_filename(conn, im_id, filename)]
+        im_ids = [im_id for sublist in im_id_array for im_id in sublist]
+        im_ids = filter_by_filename(conn, im_ids, filename)
+
+#        im_ids = [im_id for sublist in im_id_array
+#                  for im_id in sublist
+#                  if image_has_imported_filename(conn, im_id, filename)]
+
         if len(im_ids) == 0:
             print(f"Cannot annotate {project} / {dataset} / {filename}"
                   " because it can not be found")

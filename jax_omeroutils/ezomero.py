@@ -2,7 +2,7 @@ import logging
 import numpy as np
 from omero.gateway import MapAnnotationWrapper, DatasetWrapper, ProjectWrapper
 from omero.model import MapAnnotationI, DatasetI, ProjectI, ProjectDatasetLinkI
-from omero.rtypes import rlong
+from omero.rtypes import rlong, rstring
 from omero.sys import Parameters
 
 
@@ -610,8 +610,66 @@ def put_map_annotation(conn, map_ann_id, kv_dict, ns=None):
 
 
 # filters
+
+
+def filter_by_filename(conn, im_ids, imported_filename):
+    """Filter list of image ids by originalFile name
+
+    Sometimes we know the filename of an image that has been imported into
+    OMERO but not necessarily the image ID. This is frequently the case when
+    we want to annotate a recently imported image. This funciton will help
+    to filter a list of image IDs to only those associated with a particular
+    filename.
+
+    Parameters
+    ----------
+    conn : ``omero.gateway.BlitzGateway`` object
+        OMERO connection.
+    im_ids : list of int
+        List of OMERO image IDs.
+    imported_filename : str
+        The full filename (with extension) of the file whose OMERO image
+        we are looking for. NOT the path of the image.
+
+    Returns
+    -------
+    filtered_im_ids : list of int
+        Filtered list of images with originalFile name matching
+        ``imported_filename``.
+
+    Notes
+    -----
+    This function should be used as a filter on an image list that has been
+    already narrowed down as much as possible. Note that many different images
+    in OMERO may share the same filename (e.g., image.tif).
+
+    Examples
+    --------
+    >>> im_ids = get_image_ids(conn, dataset=303)
+    >>> im_ids = filter_by_filename(conn, im_ids, "feb_2020.tif")]
+    """
+
+    q = conn.getQueryService()
+    params = Parameters()
+    params.map = {"oname": rstring(imported_filename)}
+    results = q.projection(
+        "SELECT i.id FROM Image i"
+        " JOIN i.fileset fs"
+        " JOIN fs.usedFiles u"
+        " JOIN u.originalFile o"
+        " WHERE o.name=:oname",
+        params,
+        conn.SERVICE_OPTS
+    )
+    im_id_matches = [r[0].val for r in results]
+
+    return list(set(im_ids) & set(im_id_matches))
+
+
 def image_has_imported_filename(conn, im_id, imported_filename):
     """Ask whether an image is associated with a particular image file.
+
+    THIS FUNCTION IS DEPRECATED AND WILL BE REMOVED
 
     Sometimes we know the filename of an image that has been imported into
     OMERO but not necessarily the image ID. This is frequently the case when
@@ -643,13 +701,25 @@ def image_has_imported_filename(conn, im_id, imported_filename):
 
     Examples
     --------
-    >>> im_ids = get_image_ids(conn, project="My Proj", dataset="Nice Pics")
+    >>> im_ids = get_image_ids(conn, dataset=303)
     >>> im_ids = [im_id for im_id in im_ids
     ...           if image_has_imported_filename(conn, im_id, "feb_2020.tif")]
     """
-    im = conn.getObject('Image', im_id)
-    imp_files = im.getImportedImageFiles()
-    imp_filenames = [impf.getName() for impf in imp_files]
+
+    q = conn.getQueryService()
+    params = Parameters()
+    params.map = {"imid": rlong(im_id)}
+    results = q.projection(
+        "SELECT o.name FROM Image i"
+        " JOIN i.fileset fs"
+        " JOIN fs.usedFiles u"
+        " JOIN u.originalFile o"
+        " WHERE i.id=:imid",
+        params,
+        conn.SERVICE_OPTS
+    )
+    imp_filenames = [r[0].val for r in results]
+
     if imported_filename in imp_filenames:
         return True
     else:
