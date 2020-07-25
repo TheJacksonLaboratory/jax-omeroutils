@@ -437,7 +437,7 @@ def get_image_ids(conn, dataset=None, well=None):
             " WHERE d.id=:dataset",
             params,
             conn.SERVICE_OPTS
-        )
+            )
     elif well is not None:
         if not isinstance(well, int):
             raise TypeError('well must be integer')
@@ -449,7 +449,7 @@ def get_image_ids(conn, dataset=None, well=None):
             " WHERE w.id=:well",
             params,
             conn.SERVICE_OPTS
-        )
+            )
     elif (well is None) & (dataset is None):
         results = q.projection(
             "SELECT i.id FROM Image i"
@@ -463,7 +463,7 @@ def get_image_ids(conn, dataset=None, well=None):
             " )",
             params,
             conn.SERVICE_OPTS
-        )
+            )
     else:
         results = []
 
@@ -564,6 +564,77 @@ def get_group_id(conn, group_name):
     return None
 
 
+def get_original_filepaths(conn, image_id, fpath='repo'):
+    """Get paths to original files for specified image.
+
+    Parameters
+    ----------
+    conn : ``omero.gateway.BlitzGateway`` object
+        OMERO connection.
+    image_id : int
+        ID of image for which filepath info is to be returned.
+    fpath : {'repo', 'client'}, optional
+        Specify whether you want to return path to file in the managed
+        repository ('repo') or the path from which the image was imported
+        ('client'). The latter is useful for images that were imported by
+        the "in place" method. Defaults to 'repo'.
+
+    Notes
+    -----
+    The ManagedRepository ('repo') paths are relative, whereas the client paths
+    are absolute.
+
+    The client path may not be accessible if the image was not imported using
+    "in place" imports (e.g., ``transfer=ln_s``).
+
+    Returns
+    -------
+    original_filepaths : list of str
+
+    Examples
+    --------
+    Return (relative) path of file in ManagedRepository:
+    >>> get_original_filepaths(conn, 745)
+    ['djme_2/2020-06/16/13-38-36.468/PJN17_083_07.ndpi']
+
+    Return client path (location of file when it was imported):
+    >>> get_original_filepaths(conn, 2201, fpath='client')
+    ['/hyperfile/omero/Nishina_lab/Krebs_stack/PJN17_083_07.ndpi']
+    """
+
+    q = conn.getQueryService()
+    params = Parameters()
+    params.map = {"imid": rlong(image_id)}
+
+    if fpath == 'client':
+        results = q.projection(
+            "SELECT fe.clientPath"
+            " FROM Image i"
+            " JOIN i.fileset f"
+            " JOIN f.usedFiles fe"
+            " WHERE i.id=:imid",
+            params,
+            conn.SERVICE_OPTS
+            )
+        results = ['/' + r[0].val for r in results]
+    elif fpath == 'repo':
+        results = q.projection(
+            "SELECT o.path||o.name"
+            " FROM Image i"
+            " JOIN i.fileset f"
+            " JOIN f.usedFiles fe"
+            " JOIN fe.originalFile o"
+            " WHERE i.id=:imid",
+            params,
+            conn.SERVICE_OPTS
+            )
+        results = [r[0].val for r in results]
+    else:
+        raise ValueError("Parameter fpath must be 'client' or 'repo'")
+
+    return results
+
+
 # puts
 def put_map_annotation(conn, map_ann_id, kv_dict, ns=None):
     """Update an existing map annotation with new values (kv pairs)
@@ -660,7 +731,7 @@ def filter_by_filename(conn, im_ids, imported_filename):
         " WHERE o.name=:oname",
         params,
         conn.SERVICE_OPTS
-    )
+        )
     im_id_matches = [r[0].val for r in results]
 
     return list(set(im_ids) & set(im_id_matches))
@@ -717,7 +788,7 @@ def image_has_imported_filename(conn, im_id, imported_filename):
         " WHERE i.id=:imid",
         params,
         conn.SERVICE_OPTS
-    )
+        )
     imp_filenames = [r[0].val for r in results]
 
     if imported_filename in imp_filenames:
