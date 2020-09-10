@@ -5,7 +5,7 @@ import pathlib
 from getpass import getpass
 from omero.gateway import BlitzGateway
 from jax_omeroutils.ezomero import filter_by_filename
-from jax_omeroutils.ezomero import get_group_id, get_image_ids
+from jax_omeroutils.ezomero import get_image_ids
 from jax_omeroutils.ezomero import post_map_annotation
 # from jax_omeroutils.ezomero import image_has_imported_filename
 
@@ -42,10 +42,10 @@ def main(md_path, admin_user, server, port):
 
     # set up connection
     password = getpass(f'Enter password for {admin_user}: ')
-    conn = BlitzGateway(admin_user, password, host=server, port=port)
-    conn.connect()
-    group_id = get_group_id(conn, md['OMERO_group'])
-    conn.SERVICE_OPTS.setOmeroGroup(group_id)
+    su_conn = BlitzGateway(admin_user, password, host=server, port=port)
+    su_conn.connect()
+    conn = su_conn.suConn(md['user_shortname'], md['OMERO_group'], 600000)
+    su_conn.close()
 
     # loop through metadata and annotate
     print('New Annotations:')
@@ -60,10 +60,6 @@ def main(md_path, admin_user, server, port):
             im_id_array.append(get_image_ids(conn, dataset=did))
         im_ids = [im_id for sublist in im_id_array for im_id in sublist]
         im_ids = filter_by_filename(conn, im_ids, filename)
-
-#        im_ids = [im_id for sublist in im_id_array
-#                  for im_id in sublist
-#                  if image_has_imported_filename(conn, im_id, filename)]
 
         if len(im_ids) == 0:
             print(f"Cannot annotate {project} / {dataset} / {filename}"
