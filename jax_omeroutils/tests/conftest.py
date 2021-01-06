@@ -69,19 +69,19 @@ def omero_params(request):
 
 
 @pytest.fixture(scope='session')
-def users_groups(omero_params, conn):
-    user, password, host, port, _ = omero_params
-
+def users_groups(conn, omero_params):
+    session_uuid = conn.getSession().getUuid().val
+    host = omero_params[2]
+    port = omero_params[3]
     cli = CLI()
     cli.register('sessions', SessionsControl, 'TEST')
     cli.register('user', UserControl, 'test')
     cli.register('group', GroupControl, 'test')
 
     cli.invoke(['sessions', 'login',
-                '-u', user,
-                '-w', password,
-                '-p', str(port),
-                '-s', host])
+                '-k', session_uuid,
+                '-s', host,
+                '-p', str(port)])
 
     group_info = []
     for gname, gperms in GROUPS_TO_CREATE:
@@ -99,6 +99,7 @@ def users_groups(omero_params, conn):
                     'test',
                     'tester',
                     '--group-name', groups_add[0],
+                    '-e', 'useremail@jax.org',
                     '-P', 'abc123'])
 
         # add user to rest of groups

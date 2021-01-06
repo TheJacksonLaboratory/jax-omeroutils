@@ -1,16 +1,35 @@
 import argparse
 import logging
 import json
+import pandas as pd
+import pathlib
+from functools import partial
 from getpass import getpass
 from omero.gateway import BlitzGateway
-from jax_omeroutils import intake
 from jax_omeroutils.ezomero import get_image_ids
-from jax_omeroutils.ezomero import post_project, post_dataset
 from jax_omeroutils.ezomero import post_map_annotation
 from jax_omeroutils.ezomero import filter_by_filename
 from jax_omeroutils.ezomero import link_images_to_dataset
+from jax_omeroutils.importer import set_or_create_dataset
+from jax_omeroutils.importer import set_or_create_project
 
 CURRENT_MD_NS = 'jax.org/omeroutils/jaxlims/v0'
+MD_VALID_TYPES = {'xlsx': partial(pd.read_excel, dtype=str),
+                  'xls': partial(pd.read_excel, dtype=str),
+                  'tsv': partial(pd.read_csv, sep='\t', dtype=str)}
+
+
+def load_md(md_filepath):
+    allowed_ftypes = MD_VALID_TYPES.keys()
+    if md_filepath is None:
+        return None
+    md_filepath = pathlib.Path(md_filepath)
+    ftype = md_filepath.suffix.strip('.')
+    if ftype not in allowed_ftypes:
+        raise ValueError(f'Metadata file type {ftype} is invalid')
+    else:
+        reader = MD_VALID_TYPES[ftype]
+    return reader(md_filepath)
 
 
 def main(md_filepath, user_name, group, admin_user, server, port):
@@ -24,7 +43,7 @@ def main(md_filepath, user_name, group, admin_user, server, port):
     orphan_ids = get_image_ids(conn)
 
     # load and prepare metadata
-    md = intake.load_md_from_file(md_filepath)
+    md = load_md(md_filepath)
 
     if 'filename' not in md.columns:
         logging.error('Metadata file missing filename column')
@@ -74,30 +93,6 @@ def main(md_filepath, user_name, group, admin_user, server, port):
 
     conn.close()
     print('Complete!')
-
-
-def set_or_create_project(conn, project_name):
-    ps = conn.getObjects('Project', attributes={'name': project_name})
-    ps = list(ps)
-    if len(ps) == 0:
-        project_id = post_project(conn, project_name)
-        print(f'Created new Project:{project_id}')
-    else:
-        project_id = ps[0].getId()
-    return project_id
-
-
-def set_or_create_dataset(conn, project_id, dataset_name):
-    ds = conn.getObjects('Dataset',
-                         attributes={'name': dataset_name},
-                         opts={'project': project_id})
-    ds = list(ds)
-    if len(ds) == 0:
-        dataset_id = post_dataset(conn, dataset_name, project_id=project_id)
-        print(f'Created new Dataset:{dataset_id}')
-    else:
-        dataset_id = ds[0].getId()
-    return dataset_id
 
 
 if __name__ == "__main__":

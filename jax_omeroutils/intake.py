@@ -1,29 +1,33 @@
+"""
+This module is for processing directories containing OMERO-bound images and
+the metadata (submission) form accompanying those images. Note that the module
+assumes a submission form in which metadata is supplied on a file-by-file basis
+and is not suitable for handling, e.g., HCS plate imports.
+"""
+
+
 import logging
 import pathlib
+import json
 import pandas as pd
-from functools import partial
-from jax_omeroutils.filewriter import write_files_tsv, write_import_md_json
-from jax_omeroutils.filewriter import write_import_yml
+from datetime import datetime
+from importlib import import_module
+from jax_omeroutils.ezomero import get_user_id
+from omero.cli import CLI
+ImportControl = import_module("omero.plugins.import").ImportControl
 
-# metadata filetype handling #
-##############################
-
-MD_VALID_TYPES = {'xlsx': pd.read_excel,
-                  'xls': pd.read_excel,
-                  'tsv': partial(pd.read_csv, sep='\t')}
+# This variable indicates the path in which new OMERO submissions will be
+# staged for "in-place" imports
+BASE_SERVER_PATH = pathlib.Path('/hyperfile/omero/autoimport/')
 
 
 # Function definitions #
 ########################
-
-
 def find_md_file(import_directory):
-    """Finds a "valid-looking" spreadsheet file for importing OMERO metadata.
+    """Finds the xlsx file for importing OMERO metadata.
 
     This function will look at each file in the top level of the given
-    ``import_directory``. It specifically looks for file extensions in
-    ``MD_VALID_TYPES``, which tells subsequent steps of imports how to
-    load the metadata file. Note that this function only looks for a file
+    ``import_directory``. Note that this function only looks for a file
     and will not check for the validity of the file (i.e., whether the type
     matches the extention) or whether the metadata itself satisfies all
     requirements.
@@ -44,20 +48,16 @@ def find_md_file(import_directory):
     If multiple files are found, this function will log an error and return
     `None`.
 
-    Note that this function currently uses ``os.path`` for dealing with paths.
-    We should eventually switch to all pathlib.
-
     Example
     -------
-    >>> fp = import_directory('/dropbox/dropbox/djme_20200101')
+    >>> fp = import_directory('/dropbox/djme_20200101')
     >>> print(f'Import metadata file found at: {fp}')
-    /dropbox/dropbox/djme_20200101/import_me.xlsx
+    Import metadata file found at: dropbox/djme_20200101/import_me.xlsx
     """
     import_directory = pathlib.Path(import_directory)
-    allowed_ftypes = tuple(MD_VALID_TYPES.keys())
     md_files = []
     for f in import_directory.iterdir():
-        if f.suffix.endswith(allowed_ftypes):
+        if f.suffix.endswith('xlsx'):
             md_files.append(f)
     if len(md_files) == 0:
         logging.error('No valid metadata file found')
@@ -70,13 +70,15 @@ def find_md_file(import_directory):
     return md_filepath
 
 
-def load_md_from_file(md_filepath):
+def load_md_from_file(md_filepath, sheet_name=0):
     """Load metadata from file into ``pandas.DataFrame`` object.
 
     Parameters
     ----------
     md_filepath : str, pathlike object, or None
         Path to file to attempt to load.
+    sheet_name : str, int, list or None
+        Passed to ``pd.read_excel``.
 
     Returns
     -------
@@ -88,30 +90,30 @@ def load_md_from_file(md_filepath):
     This function will usually be taking its input from ``find_md_file``. Since
     that function will return `None` if no single metadata file is found, this
     function can take `None` as input, returning `None`.
-
-    Examples
-    --------
-    >>> md = load_md_from_file(find_md_file('/dropbox/dropbox/djme_20200101'))
-    >>> print(md.iloc[:, :3])
-         filename      project      dataset
-    0  image0.tif  testproject  testdataset
-    1  image1.tif  testproject  testdataset
-    2  image2.tif  testproject  testdataset
-    3  image3.tif  testproject  testdataset
-    4  image4.tif  testproject  testdataset
     """
 
-    allowed_ftypes = MD_VALID_TYPES.keys()
     if md_filepath is None:
         return None
     md_filepath = pathlib.Path(md_filepath)
-    ftype = md_filepath.suffix.strip('.')
-    if ftype not in allowed_ftypes:
-        raise ValueError(f'Metadata file type {ftype} is invalid')
-    else:
-        reader = MD_VALID_TYPES[ftype]
-    return reader(md_filepath)
+    if not md_filepath.exists():
+        raise FileNotFoundError(f'No such file: {md_filepath}')
+    if md_filepath.suffix != '.xlsx':
+        raise ValueError('File suffix must be xlsx')
 
+    md_header = pd.read_excel(md_filepath,
+                              sheet_name=sheet_name,
+                              nrows=4,
+                              index_col=0,
+                              header=None)
+    md = pd.read_excel(md_filepath,
+                       sheet_name=sheet_name,
+                       skiprows=range(4),
+                       dtype=str)
+    md_json = {}
+    md_json['omero_user'] = md_header.loc['OMERO user:', 1]
+    md_json['omero_group'] = md_header.loc['OMERO group:', 1]
+    md_json['file_metadata'] = md.to_dict(orient='records')
+    return(md_json)
 
 # Class definitions #
 #####################
@@ -120,199 +122,270 @@ def load_md_from_file(md_filepath):
 class ImportBatch:
     """Class for a batch of import files + metadata.
 
+    ImportBatch in this case means a collection of individual image files.
+    The assumption is that each file equals one row in the xlsx metadata form.
+    This class should not be used for situations such as HCS plate imports, as
+    the assumptions about how to handle the images and metadata will not hold.
+
     Parameters
     ----------
     import_path : str or pathlike object
         Path to the directory containing the images to be imported. Files will
         be written to this directory.
-    user : str
-        Shortname of OMERO user who will own the images.
-    group : str
-        Group name of OMERO user who will own the images.
-    import_type : {'flat', 'plate'}, optional
-        Method to use for handling metadata. See attribute details below.
-        Defaults to 'flat'.
+    conn : ``omero.gateway.BlitzGateway`` object
+        Active OMERO connection. Needed for validation steps and to load
+        user email address.
 
     Attributes
     ----------
     import_path : ``pathlib.Path`` object
         See description in Parameters section.
-    import_type : {'flat', 'plate'}
-        Method to use for handling metadata.
-
-        flat: Most imports will use the "flat" method, where the directory
-        containing files for import has a flat structure, and each file has
-        one row in the import metadata file.
-
-        plate: [NOT CURRENTLY IMPLEMENTED] Imports of HCS data (plate scans)
-        will have complex file structures that do not work with the "flat"
-        approach. For example, each "well" may comprise multiple files. There
-        may be a directory structure to the files. And different wells will
-        obviously have different metadata, even though the whole plate would be
-        one import "target" in the OMERO sense. We will need to write methods
-        to handle these data in the future.
-    user : str
-        See description in Parameters section.
-    group : str
-        See description in Parameters section.
-    md : pandas.DataFrame
-        Imported metadata, as output from ``load_md_from_file``.
-    valid_batch : boolean
-        Flag to set if import batch passes all checks for validity
-        (`self.validate_batch`)
-    target_path : ``pathlib.Path`` object or None
-        Path to directory where images will reside on OMERO server. This path
-        will be used to set up the bulk import files for OMERO and must be
-        correct, or import will fail. Defaults to `None` on initialization and
-        set with `self.set_target_path`.
-
-    Notes
-    -----
-    Object initialization should fail if there is no valid metadata returned
-    from ``load_md_from_file``.
-
-    Need to refactor to fully utilize pathlib.
-
-    Examples
-    --------
-    >>> batch = ImportBatch('/dropbox/dropbox/djme_202000101',
-    ...                     'djme',
-    ...                     'Research_IT',
-    ...                     import_type='flat')
-    >>> batch.validate_batch()
-    True
-    >>> batch.set_target('/hyperfile/omero/Research_IT/djme_20200101')
+    user : str or None
+        Shortname of OMERO user who will own the images.
+    group : str or None
+        Group that will own the images.
+    user_email : str or None
+        Email address for user, as pulled from OMERO.
+    md : dict or None
+        Loaded metadata, as output from ``load_md_from_file``.
+    valid_md : boolean
+        Flag to set if import form passes all checks for validity
+        (`self.validate_import_md`)
+    server_path : ``pathlib.Path`` object or None
+        Path to directory where images will reside on OMERO server. Defaults to
+        `None` on initialization and set with `self.set_target_path`.
+    conn : ``omero.gateway.BlitzGateway`` object
+        OMERO connection to be used with this import batch. Necessary for
+        validating user/group and grabbing email address from OMERO.
+    import_target_list : list of ImportTarget objects
+        Populated by ``self.load_targets``.
     """
 
-    def __init__(self, import_path, user, group, import_type='flat'):
+    def __init__(self, conn, import_path):
         self.import_path = pathlib.Path(import_path)
-        self.import_type = import_type
-        self.user = user  # shortname (for OMERO)
-        self.group = group  # OMERO group
-        self.md = load_md_from_file(find_md_file(import_path))
-        self.valid_batch = False
-        self.target_path = None
+        self.user = None  # shortname (for OMERO)
+        self.group = None  # OMERO group
+        self.user_email = None  # user email address pulled from OMERO
+        self.md = None
+        self.valid_md = False
+        self.server_path = None  # where images will live on server
+        self.conn = conn  # OMERO connection
+        self.import_target_list = []  # List of ImportTarget objects
 
-    def validate_batch(self):
-        """Validates import batch based on `self.import_type`
+    def load_md(self, sheet_name="Submission Form"):
+        """Populate self.md
+
+        If no metadata form is found, self.md will remain None. Nothing is
+        returned.
+        """
+        self.md = load_md_from_file(find_md_file(self.import_path),
+                                    sheet_name=sheet_name)
+
+    def validate_user_group(self, user=None, group=None):
+        """Validate omero user and group
+
+        If user is a valid member of a valid group, ``self.user``,
+        ``self.group``, and ``self.user_email`` will be set.
 
         Returns
         -------
         valid : boolean
-            The value assigned to `self.valid_batch` by the method.
-
-        Notes
-        -----
-        Currently, only the "flat" import type is implemented, so this method
-        simply wraps `self._validate_flat`
+            True if user is valid, group is valid, and user is a member of
+            the group.
         """
-        if self.md is None:
-            logging.error('Cannot validate ImportBatch: no metadata found')
-            return False
+        if user is None:
+            user = self.md['omero_user']
 
-        if self.import_type == 'flat':
-            self._validate_flat()
-            return self.valid_batch
-        else:
-            return False
+        if group is None:
+            group = self.md['omero_group']
 
-    def set_target_path(self, fp):
-        """Sets `self.target_path`.
+        # Check group
+        for g in self.conn.listGroups():
+            if g.getName() == group:
+                group_summary = g.groupSummary()
+                self.group = group
 
-        This method does not return anything.
+                # Check user is a part of group
+                userlist = group_summary[0]
+                userlist.extend(group_summary[1])
+                userlist = [u.getName() for u in userlist]
+                if user not in userlist:
+                    logging.error(f'User {user} is not in group {group}.')
+                    return False
+                else:
+                    self.user = user
+                    userid = get_user_id(self.conn, self.user)
+                    user_obj = self.conn.getObject('Experimenter', userid)
+                    self.user_email = user_obj._obj.email._val
+                    return True
+        logging.error(f'Group {group} was not found.')
+        return False
 
-        Parameters
-        ----------
-        fp : str or pathlike object
-           Path to directory where images will reside on OMERO server. This
-           path will be used to set up the bulk import files for OMERO and
-           must be correct, or import will fail.
+    def set_server_path(self):
+        """Set ``self.server_path`` based on group, user, and import date.
         """
-        self.target_path = pathlib.Path(fp)
+        group_directory = self.group.lower().replace(' ', '_')
+        group_directory = pathlib.Path(group_directory)
 
-    def write_files(self):
-        """Writes import.yml, files.tsv, and import_md.json
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-        This function will only attempt to write files if `self.valid_batch`
-        is True and `self.target_path` has been set.
+        batch_directory = pathlib.Path(f'{self.user}_{timestamp}')
 
-        This function does not return anything, but will log the path to the
-        files being written (level=INFO).
-        """
-        if self.valid_batch is not True:
-            logging.error('Cannot write files: ImportBatch not validated')
-            return
+        self.server_path = BASE_SERVER_PATH / group_directory / batch_directory
 
-        if self.target_path is None:
-            logging.error('target_path must be set to create import files')
-            return
-
-        files_tsv_fp = write_files_tsv(self.md, self.import_path,
-                                       self.target_path)
-        logging.info(f'Writing {files_tsv_fp}')
-        import_yml_fp = write_import_yml(self.import_path, self.target_path)
-        logging.info(f'Writing {import_yml_fp}')
-        import_md_json_fp = write_import_md_json(self.md, self.import_path,
-                                                 self.user, self.group)
-        logging.info(f'Writing {import_md_json_fp}')
-        print(f'Success! Files written to {self.import_path}')
-
-    def _validate_flat(self):
-        """Use the "flat" approach for validating the import batch.
+    def validate_import_md(self):
+        """Check whether the supplied metadata is valid.
 
         This function will do the following checks:
          - Do the columns 'filename', 'project', and 'dataset' exist?
-         - Are there any fields with missing data?
-         - Are there files that don't have metadata entries?
-         - Are there metadata entries that don't have files?
+         - Are there any fields in the above columns with missing data?
          - Are there any duplicate filenames in the metadata?
 
-        This function will set `self.valid_batch` depending on the outcome of
-        these checks.
+        This function will set `self.valid_md` depending on the outcome of
+        these checks. Will return True or False, accordingly.
 
         Notes
         -----
         Each row of the metadata file is expected to point to one unique
-        image file.
+        OMERO import target.
         """
-        self.valid_batch = True
+        self.valid_md = True
 
-        # Check for necessary columns
-        if 'filename' not in self.md.columns:
-            logging.error('Metadata file missing filename column')
-            self.valid_batch = False
-            return
-        if 'dataset' not in self.md.columns:
-            logging.error('Metadata file missing dataset column')
-            self.valid_batch = False
-        if 'project' not in self.md.columns:
-            logging.error('Metadata file missing project column')
-            self.valid_batch = False
+        for filemd in self.md['file_metadata']:
+            if 'filename' not in filemd.keys():
+                logging.error('File metadata missing filename')
+                self.valid_md = False
+                return False
+            elif (str(filemd['filename']) == '' or
+                  str(filemd['filename']) == 'nan'):
+                logging.error('filename cannot be empty/blank')
+                self.valid_md = False
+                return False
 
-        # Check for missing fields
-        if self.md.isnull().values.any():
-            logging.error('Spreadsheet missing values')
-            self.valid_batch = False
+            if 'dataset' not in filemd.keys():
+                logging.error('File metadata missing dataset')
+                self.valid_md = False
+                return False
+            elif (str(filemd['dataset']) == '' or
+                  str(filemd['dataset']) == 'nan'):
+                logging.error('dataset name cannot be empty/blank')
+                self.valid_md = False
+                return False
 
-        # Check for file mismatching
-        file_list_dir = [f.name for f in self.import_path.iterdir()]
-        file_list_md = self.md.filename.values
-        for f in file_list_dir:
-            if f.endswith(tuple(MD_VALID_TYPES.keys())):
-                file_list_dir.remove(f)
-
-        uniq_files_dir = set(file_list_dir) - set(file_list_md)
-        uniq_files_md = set(file_list_md) - set(file_list_dir)
-        if len(uniq_files_dir) > 0:
-            logging.error('Some files unaccounted for:'
-                          f'{list(uniq_files_dir)}')
-            self.valid_batch = False
-        if len(uniq_files_md) > 0:
-            logging.error('Some metadata entries missing files:'
-                          f'{list(uniq_files_md)}')
-            self.valid_batch = False
+            if 'project' not in filemd.keys():
+                logging.error('File metadata missing project')
+                self.valid_md = False
+                return False
+            elif (str(filemd['project']) == '' or
+                  str(filemd['project']) == 'nan'):
+                logging.error('project name cannot be empty/blank')
+                self.valid_md = False
+                return False
 
         # Check for duplicate filenames in metadata
+        file_list_md = [f['filename'] for f in self.md['file_metadata']]
         if len(set(file_list_md)) < len(file_list_md):
             logging.error('Duplicate filenames in metadata')
-            self.valid_batch = False
+            self.valid_md = False
+            return False
+
+        return True
+
+    def load_targets(self):
+        """Populate ``self.import_target_list`` with valid ImportTarget objects
+        """
+        for md_entry in self.md['file_metadata']:
+            imp_target = ImportTarget(self.import_path, md_entry)
+            if imp_target.exists:
+                imp_target.validate_target()
+            else:
+                err = f'Target does not exist: {imp_target.path_to_target}'
+                logging.error(err)
+            if imp_target.valid_target is True:
+                self.import_target_list.append(imp_target)
+            elif imp_target.valid_target is False:
+                err = ('Target can not be imported'
+                       f' by OMERO: {imp_target.path_to_target}')
+                logging.error(err)
+
+    def write_json(self):
+        """Write out metadata file for further processing
+        """
+        mandatory = [self.user, self.group, self.user_email,
+                     self.md, self.server_path]
+        if None in mandatory:
+            logging.error("Cannot write import.json, missing information")
+            return False
+        elif self.valid_md is False:
+            logging.error("Cannot write import.json, missing information")
+            return False
+        elif len(self.import_target_list) == 0:
+            logging.error("Cannot write import.json, no valid import targets")
+            return False
+        else:
+            import_json = {}
+            import_json['user'] = self.user
+            import_json['group'] = self.group
+            import_json['user_email'] = self.user_email
+            import_json['user_supplied_md'] = self.md
+            import_json['server_path'] = str(self.server_path)
+            import_json['import_path'] = str(self.import_path)
+            import_json['import_targets'] = []
+            for target in self.import_target_list:
+                import_json['import_targets'].append(target.target_md)
+            with open(self.import_path / 'import.json', 'w') as fp:
+                json.dump(import_json, fp)
+            return True
+
+
+class ImportTarget:
+    """Class to handle a file to be imported
+
+    This should correspond to a row from the metadata form, as processed by
+    ``load_md_from_file``.
+
+    Parameters
+    ----------
+    import_path : pathlib.Path object
+        Path to directory containing the file to be processed. Generally, this
+        will come from ``ImportBatch.import_path``.
+    md_entry : dict
+        Metadata for a particular file, generally supplied by an import
+        metadata form as processed by ``load_md_from_file``. In that case,
+        a single ``md_entry`` corresponds to an item under
+        ``md['file_metadata']``.
+
+    Attributes
+    ----------
+    target_md : dict
+        Populated from ``md_entry`` parameter.
+    path_to_target : ``pathlib.Path`` object
+        Path to the file represented by the ImportTarget
+    exists : boolean
+        True if the file at ``self.path_to_target`` exists.
+    valid_target : boolean
+        Set by ``self.validate_target``
+    """
+
+    def __init__(self, import_path, md_entry):
+        self.target_md = md_entry
+        self.path_to_target = import_path / self.target_md['filename']
+        self.exists = self.path_to_target.exists()
+        self.valid_target = None
+
+    def validate_target(self):
+        """Check whether an import target can be imported by OMERO
+
+        This used the OMERO CLI, but since it is just checking whether
+        the file can be interpreted by BioFormats, there is no connection
+        required.
+        """
+
+        cli = CLI()
+        cli.register('import', ImportControl, '_')
+        cli.invoke(['import', '-f', str(self.path_to_target)])
+
+        if cli.rv == 0:
+            self.valid_target = True
+        else:
+            self.valid_target = False

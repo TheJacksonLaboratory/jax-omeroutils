@@ -10,3 +10,5 @@ __pycache__
 
 # misc python stuff
 jax_omeroutils.egg-info
+config.py
+

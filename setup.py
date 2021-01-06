@@ -17,7 +17,8 @@ setuptools.setup(
     install_requires=[
         'omero-py',
         'pandas',
-        'numpy'
+        'numpy',
+        'xlrd'
     ],
     python_requires='>=3.6'
 )
