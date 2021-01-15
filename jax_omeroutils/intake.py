@@ -12,7 +12,7 @@ import json
 import pandas as pd
 from datetime import datetime
 from importlib import import_module
-from jax_omeroutils.ezomero import get_user_id
+from ezomero import get_user_id
 from omero.cli import CLI
 ImportControl = import_module("omero.plugins.import").ImportControl
 

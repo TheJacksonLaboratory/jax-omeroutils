@@ -7,9 +7,9 @@ intake (using the intake.py module).
 
 
 import logging
-from jax_omeroutils.ezomero import post_dataset, post_project
-from jax_omeroutils.ezomero import post_map_annotation
-from jax_omeroutils.ezomero import get_image_ids, link_images_to_dataset
+from ezomero import post_dataset, post_project
+from ezomero import post_map_annotation
+from ezomero import get_image_ids, link_images_to_dataset
 from importlib import import_module
 from omero.cli import CLI
 from omero.plugins.sessions import SessionsControl

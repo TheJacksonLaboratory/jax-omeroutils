@@ -6,10 +6,10 @@ import pathlib
 from functools import partial
 from getpass import getpass
 from omero.gateway import BlitzGateway
-from jax_omeroutils.ezomero import get_image_ids
-from jax_omeroutils.ezomero import post_map_annotation
-from jax_omeroutils.ezomero import filter_by_filename
-from jax_omeroutils.ezomero import link_images_to_dataset
+from ezomero import get_image_ids
+from ezomero import post_map_annotation
+from ezomero import filter_by_filename
+from ezomero import link_images_to_dataset
 from jax_omeroutils.importer import set_or_create_dataset
 from jax_omeroutils.importer import set_or_create_project
 

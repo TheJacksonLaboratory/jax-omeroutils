@@ -1,7 +1,7 @@
 import argparse
 from getpass import getpass
 from omero.gateway import BlitzGateway
-from jax_omeroutils.ezomero import get_image_ids, get_group_id, get_image
+from ezomero import get_image_ids, get_group_id, get_image
 
 
 def main(group, admin_user, server, port):

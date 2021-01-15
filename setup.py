@@ -18,7 +18,8 @@ setuptools.setup(
         'omero-py',
         'pandas',
         'numpy',
-        'xlrd'
+        'openpyxl',
+        'ezomero'
     ],
     python_requires='>=3.6'
 )
