@@ -7,11 +7,11 @@ from functools import partial
 from getpass import getpass
 from omero.gateway import BlitzGateway
 from ezomero import get_image_ids
-from ezomero import post_map_annotation
 from ezomero import filter_by_filename
 from ezomero import link_images_to_dataset
 from jax_omeroutils.importer import set_or_create_dataset
 from jax_omeroutils.importer import set_or_create_project
+from jax_omeroutils.importer import multi_post_map_annotation
 
 CURRENT_MD_NS = 'jax.org/omeroutils/jaxlims/v0'
 MD_VALID_TYPES = {'xlsx': partial(pd.read_excel, dtype=str),
@@ -77,7 +77,7 @@ def main(md_filepath, user_name, group, admin_user, server, port):
 
                 # map annotations
                 ns = CURRENT_MD_NS
-                map_ann_id = post_map_annotation(conn,
+                map_ann_id = multi_post_map_annotation(conn,
                                                  "Image",
                                                  image_ids,
                                                  row,
