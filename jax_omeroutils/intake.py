@@ -252,7 +252,7 @@ class ImportBatch:
         OMERO import target.
         """
         self.valid_md = True
-
+        print(self.md)
         for filemd in self.md['file_metadata']:
             if 'filename' not in filemd.keys():
                 logging.error('File metadata missing filename')
