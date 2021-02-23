@@ -114,6 +114,7 @@ def load_md_from_file(md_filepath, sheet_name=0):
     md_json = {}
     md_json['omero_user'] = md_header.loc['OMERO user:', 1]
     md_json['omero_group'] = md_header.loc['OMERO group:', 1]
+    print(md)
     md_json['file_metadata'] = md.to_dict(orient='records')
     return(md_json)
 
