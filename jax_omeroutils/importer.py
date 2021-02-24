@@ -8,13 +8,13 @@ intake (using the intake.py module).
 
 import logging
 from ezomero import post_dataset, post_project
-from ezomero import post_map_annotation
 from ezomero import get_image_ids, link_images_to_dataset
 from importlib import import_module
 from omero.cli import CLI
 from omero.plugins.sessions import SessionsControl
 from omero.rtypes import rstring
 from omero.sys import Parameters
+from omero.gateway import MapAnnotationWrapper
 from pathlib import Path
 ImportControl = import_module("omero.plugins.import").ImportControl
 
@@ -79,6 +79,62 @@ def set_or_create_dataset(conn, project_id, dataset_name):
         dataset_id = ds[0].getId()
     return dataset_id
 
+
+def multi_post_map_annotation(conn, object_type, object_ids, kv_dict, ns):
+    """Create a single new MapAnnotation and link to multiple images.
+    Parameters
+    ----------
+    conn : ``omero.gateway.BlitzGateway`` object
+        OMERO connection.
+    object_type : str
+       OMERO object type, passed to ``BlitzGateway.getObjects``
+    object_ids : int or list of ints
+        IDs of objects to which the new MapAnnotation will be linked.
+    kv_dict : dict
+        key-value pairs that will be included in the MapAnnotation
+    ns : str
+        Namespace for the MapAnnotation
+    Notes
+    -----
+    All keys and values are converted to strings before saving in OMERO.
+    Returns
+    -------
+    map_ann_id : int
+        IDs of newly created MapAnnotation
+    Examples
+    --------
+    >>> ns = 'jax.org/jax/example/namespace'
+    >>> d = {'species': 'human',
+             'occupation': 'time traveler'
+             'first name': 'Kyle',
+             'surname': 'Reese'}
+    >>> multi_post_map_annotation(conn, "Image", [23,56,78], d, ns)
+    234
+    """
+    if type(object_ids) not in [list, int]:
+        raise TypeError('object_ids must be list or integer')
+    if type(object_ids) is not list:
+        object_ids = [object_ids]
+
+    if len(object_ids) == 0:
+        raise ValueError('object_ids must contain one or more items')
+
+    if type(kv_dict) is not dict:
+        raise TypeError('kv_dict must be of type `dict`')
+
+    kv_pairs = []
+    for k, v in kv_dict.items():
+        k = str(k)
+        v = str(v)
+        kv_pairs.append([k, v])
+
+    map_ann = MapAnnotationWrapper(conn)
+    map_ann.setNs(str(ns))
+    map_ann.setValue(kv_pairs)
+    map_ann.save()
+    for o in conn.getObjects(object_type, object_ids):
+        o.linkAnnotation(map_ann)
+    return map_ann.getId()
 
 # Class definitions
 class Importer:
@@ -177,7 +233,7 @@ class Importer:
             logging.error('No image ids to annotate')
             return None
         else:
-            map_ann_id = post_map_annotation(self.conn, "Image",
+            map_ann_id = multi_post_map_annotation(self.conn, "Image",
                                              self.image_ids, self.md,
                                              CURRENT_MD_NS)
             return map_ann_id

@@ -104,11 +104,13 @@ def load_md_from_file(md_filepath, sheet_name=0):
                               sheet_name=sheet_name,
                               nrows=4,
                               index_col=0,
-                              header=None)
+                              header=None,
+                              engine="openpyxl")
     md = pd.read_excel(md_filepath,
                        sheet_name=sheet_name,
                        skiprows=range(4),
-                       dtype=str)
+                       dtype=str,
+                       engine="openpyxl")
     md_json = {}
     md_json['omero_user'] = md_header.loc['OMERO user:', 1]
     md_json['omero_group'] = md_header.loc['OMERO group:', 1]
@@ -250,7 +252,6 @@ class ImportBatch:
         OMERO import target.
         """
         self.valid_md = True
-
         for filemd in self.md['file_metadata']:
             if 'filename' not in filemd.keys():
                 logging.error('File metadata missing filename')
