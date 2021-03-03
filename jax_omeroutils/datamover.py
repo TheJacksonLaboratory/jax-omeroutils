@@ -97,10 +97,11 @@ class DataMover:
         # Move files indicated in import.json
         for target in self.import_targets:
             src_fp = self.import_path / target['filename']
+            file = str(target['filename'])
             result = file_mover(src_fp, self.server_path)
             if result is not None:
                 print(f'File moved to {result}')
-                self.logger.debug(f'Success moving file to {result}. It will be imported.')
+                self.logger.debug(f'Success moving file {file} to the server. It will be imported.')
                 os.chmod(result, FILE_PERM)
 
         # Move import.json
