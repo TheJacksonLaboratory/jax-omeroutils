@@ -33,8 +33,10 @@ def main(target, datauser, omerouser):
     omero_user_gid = data_user_gid
     omero_user_home = f"/home/{omerouser}"
 
+    curr_folder = os.path.abspath(os.path.dirname(__file__))
+
     # Run prepare_batch.py
-    prepbatch = [sys.executable, 'prepare_batch.py', target]
+    prepbatch = [sys.executable, curr_folder + '/prepare_batch.py', target]
     process = subprocess.Popen(prepbatch,
                                preexec_fn=demote(data_user_uid,
                                                  data_user_gid,
@@ -57,7 +59,7 @@ def main(target, datauser, omerouser):
     fp.close()
 
     # Run import_annotate_batch.py
-    impbatch = [sys.executable, 'import_annotate_batch.py', json_path]
+    impbatch = [sys.executable, curr_folder + '/import_annotate_batch.py', json_path]
     process = subprocess.Popen(impbatch,
                                preexec_fn=demote(omero_user_uid,
                                                  omero_user_gid,
