@@ -19,6 +19,7 @@ def demote(user_uid, user_gid, homedir):
 
 def retrieve_json(stdoutval):
     last_line = stdoutval.split('\n')[-2]
+    print(last_line)
     json_path = last_line.split(':')[-1].strip()
     return json_path
 
