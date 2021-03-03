@@ -179,9 +179,8 @@ class ImportBatch:
         self.server_path = None  # where images will live on server
         self.conn = conn  # OMERO connection
         self.import_target_list = []  # List of ImportTarget objects\
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        self.logfile = self.import_path / pathlib.Path(f'{timestamp}.log')
-        logging.basicConfig(filename=self.logfile, level=logging.DEBUG)
+        
+        
 
     def load_md(self, sheet_name="Submission Form"):
         """Populate self.md
@@ -221,8 +220,7 @@ class ImportBatch:
                 userlist.extend(group_summary[1])
                 userlist = [u.getName() for u in userlist]
                 if user not in userlist:
-                    logging.error(f'User {user} is not in group {group} and/or user {user} does not exist. Please double-check \
-                                    the spelling and note that usernames and group names are case sensitive!')
+                    logging.error(f'User {user} is not in group {group} and/or user {user} does not exist. Please double-check the spelling and note that usernames and group names are case sensitive!')
                     raise ValueError('User non-existent or not in group.')
                 else:
                     self.user = user
@@ -311,8 +309,7 @@ class ImportBatch:
             if imp_target.exists:
                 imp_target.validate_target()
             else:
-                err = f'Target does not exist: {imp_target.path_to_target}. This file is in your spreadsheet \
-                        but not in your folder, and will not be imported.'
+                err = f'Target does not exist: {imp_target.path_to_target}. This file is in your spreadsheet but not in your folder, and will not be imported.'
                 logging.error(err)
             if imp_target.valid_target is True:
                 self.import_target_list.append(imp_target)
@@ -327,8 +324,7 @@ class ImportBatch:
         mandatory = [self.user, self.group, self.user_email,
                      self.md, self.server_path]
         if None in mandatory:
-            logging.error("Cannot write import.json, missing or wrong information in one of the following items:\
-                            username, group, metadata spreadsheet")
+            logging.error("Cannot write import.json, missing or wrong information in one of the following items: username, group, metadata spreadsheet")
             return False
         elif self.valid_md is False:
             logging.error("Cannot write import.json, metadata spreadsheet contains invalid values.")
