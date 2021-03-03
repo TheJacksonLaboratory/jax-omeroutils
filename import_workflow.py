@@ -19,7 +19,7 @@ def demote(user_uid, user_gid, homedir):
 
 def retrieve_json(stdoutval):
     last_line = stdoutval.split('\n')[-2]
-    if (last_line == ""):
+    if (last_line == "\n"):
         print("empty last line")
     json_path = last_line.split(':')[-1].strip()
     return json_path
@@ -53,7 +53,8 @@ def main(target, datauser, omerouser):
                                stderr=subprocess.PIPE)
     stdoutval, stderrval = process.communicate()
     stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
-    print(stdoutval, stderrval)
+    print("stdout:",stdoutval)
+    print("stderr:",stderrval)
     json_path = retrieve_json(stdoutval)
     print(f'json path will be {json_path}')
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
