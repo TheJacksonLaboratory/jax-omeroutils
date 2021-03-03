@@ -22,6 +22,7 @@ def main(import_batch_directory):
                         port=OMERO_PORT)
     conn.connect()
     batch = ImportBatch(conn, import_batch_directory)
+    batch.set_logging()
     batch.load_md()
     batch.validate_import_md()
     batch.validate_user_group()

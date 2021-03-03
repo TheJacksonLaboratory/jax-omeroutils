@@ -5,7 +5,6 @@ import pwd
 import sys
 import grp
 import pathlib
-import logging
 from datetime import datetime
 
 
@@ -26,10 +25,6 @@ def retrieve_json(stdoutval):
 
 
 def main(target, datauser, omerouser):
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    logfile = pathlib.Path(target) / pathlib.Path(f'{timestamp}.log')
-    print("log file path:", logfile)
-    logging.basicConfig(filename=logfile, level=logging.DEBUG)
 
     # Data user info
     data_user_uid = pwd.getpwnam(datauser).pw_uid

@@ -54,16 +54,17 @@ def find_md_file(import_directory):
     >>> print(f'Import metadata file found at: {fp}')
     Import metadata file found at: dropbox/djme_20200101/import_me.xlsx
     """
+    logger = logging.getLogger('intake')
     import_directory = pathlib.Path(import_directory)
     md_files = []
     for f in import_directory.iterdir():
         if f.suffix.endswith('xlsx'):
             md_files.append(f)
     if len(md_files) == 0:
-        logging.error('No valid metadata file found - have you added an Excel spreadsheet to your files?')
+        logger.error('No valid metadata file found - have you added an Excel spreadsheet to your files?')
         md_filepath = None
     elif len(md_files) > 1:
-        logging.error('>1 metadata files found, can not process. Is your spreadsheet open? Please close it!')
+        logger.error('>1 metadata files found, can not process. Is your spreadsheet open? Please close it!')
         md_filepath = None
     else:
         md_filepath = md_files[0]
@@ -91,15 +92,15 @@ def load_md_from_file(md_filepath, sheet_name=0):
     that function will return `None` if no single metadata file is found, this
     function can take `None` as input, returning `None`.
     """
-
+    logger = logging.getLogger('intake')
     if md_filepath is None:
         return None
     md_filepath = pathlib.Path(md_filepath)
     if not md_filepath.exists():
-        logging.error(f'Cannot find file {md_filepath} - have you moved it?')
+        logger.error(f'Cannot find file {md_filepath} - have you moved it?')
         raise FileNotFoundError(f'No such file: {md_filepath}')
     if md_filepath.suffix != '.xlsx':
-        logging.error('Only spreadsheets with xlsx extensions are accepted. Please use our template for submission!')
+        logger.error('Only spreadsheets with xlsx extensions are accepted. Please use our template for submission!')
         raise ValueError('File suffix must be xlsx')
 
     try:
@@ -110,7 +111,7 @@ def load_md_from_file(md_filepath, sheet_name=0):
                               header=None,
                               engine="openpyxl")
     except KeyError:
-        logging.error("Your spreadsheet does not have a Submission Form sheet - please use our template for submission!")
+        logger.error("Your spreadsheet does not have a Submission Form sheet - please use our template for submission!")
         raise KeyError(f"Worksheet {sheet_name} does not exist.")
     md = pd.read_excel(md_filepath,
                        sheet_name=sheet_name,
@@ -178,9 +179,20 @@ class ImportBatch:
         self.valid_md = False
         self.server_path = None  # where images will live on server
         self.conn = conn  # OMERO connection
-        self.import_target_list = []  # List of ImportTarget objects\
+        self.import_target_list = []  # List of ImportTarget objects
+        self.logger = logging.getLogger('intake')
         
-        
+    def set_logging(self):
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        logfile = pathlib.Path(self.import_path) / pathlib.Path(f'{timestamp}.log')
+        print("log file path:", logfile)
+        self.logger.setLevel(logging.DEBUG)
+        fh = logging.FileHandler(logfile)
+        fh.setLevel(logging.DEBUG)
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.DEBUG)
+        self.logger.addHandler(fh)
+        self.logger.addHandler(ch)
 
     def load_md(self, sheet_name="Submission Form"):
         """Populate self.md
@@ -220,7 +232,7 @@ class ImportBatch:
                 userlist.extend(group_summary[1])
                 userlist = [u.getName() for u in userlist]
                 if user not in userlist:
-                    logging.error(f'User {user} is not in group {group} and/or user {user} does not exist. Please double-check the spelling and note that usernames and group names are case sensitive!')
+                    self.logger.error(f'User {user} is not in group {group} and/or user {user} does not exist. Please double-check the spelling and note that usernames and group names are case sensitive!')
                     raise ValueError('User non-existent or not in group.')
                 else:
                     self.user = user
@@ -228,7 +240,7 @@ class ImportBatch:
                     user_obj = self.conn.getObject('Experimenter', userid)
                     self.user_email = user_obj._obj.email._val
                     return True
-        logging.error(f'Group {group} was not found. Please double-check the spelling and note that usernames and group names are case sensitive!')
+        self.logger.error(f'Group {group} was not found. Please double-check the spelling and note that usernames and group names are case sensitive!')
         raise ValueError('group not found.')
 
 
@@ -263,39 +275,39 @@ class ImportBatch:
         self.valid_md = True
         for filemd in self.md['file_metadata']:
             if 'filename' not in filemd.keys():
-                logging.error('Column \'filename\' is missing in your spreadsheet!')
+                self.logger.error('Column \'filename\' is missing in your spreadsheet!')
                 self.valid_md = False
                 return False
             elif (str(filemd['filename']) == '' or
                   str(filemd['filename']) == 'nan'):
-                logging.error('You have an empty filename in your spreadsheet. Please double-check!')
+                self.logger.error('You have an empty filename in your spreadsheet. Please double-check!')
                 self.valid_md = False
                 return False
 
             if 'dataset' not in filemd.keys():
-                logging.error('Column \'dataset\' is missing in your spreadsheet!')
+                self.logger.error('Column \'dataset\' is missing in your spreadsheet!')
                 self.valid_md = False
                 return False
             elif (str(filemd['dataset']) == '' or
                   str(filemd['dataset']) == 'nan'):
-                logging.error('You have an empty dataset name in your spreadsheet. Please double-check!')
+                self.logger.error('You have an empty dataset name in your spreadsheet. Please double-check!')
                 self.valid_md = False
                 return False
 
             if 'project' not in filemd.keys():
-                logging.error('Column \'project\' is missing in your spreadsheet!')
+                self.logger.error('Column \'project\' is missing in your spreadsheet!')
                 self.valid_md = False
                 return False
             elif (str(filemd['project']) == '' or
                   str(filemd['project']) == 'nan'):
-                logging.error('You have an empty project name in your spreadsheet. Please double-check!')
+                self.logger.error('You have an empty project name in your spreadsheet. Please double-check!')
                 self.valid_md = False
                 return False
 
         # Check for duplicate filenames in metadata
         file_list_md = [f['filename'] for f in self.md['file_metadata']]
         if len(set(file_list_md)) < len(file_list_md):
-            logging.error('Spreadsheet contains duplicate filenames. Please double-check!')
+            self.logger.error('Spreadsheet contains duplicate filenames. Please double-check!')
             self.valid_md = False
             return False
 
@@ -310,13 +322,13 @@ class ImportBatch:
                 imp_target.validate_target()
             else:
                 err = f'Target does not exist: {imp_target.path_to_target}. This file is in your spreadsheet but not in your folder, and will not be imported.'
-                logging.error(err)
+                self.logger.error(err)
             if imp_target.valid_target is True:
                 self.import_target_list.append(imp_target)
             elif imp_target.valid_target is False:
                 err = ('Target can not be imported'
                        f' by OMERO: {imp_target.path_to_target}. File might be corrupted or invalid. Skipping.')
-                logging.error(err)
+                self.logger.error(err)
 
     def write_json(self):
         """Write out metadata file for further processing
@@ -324,13 +336,13 @@ class ImportBatch:
         mandatory = [self.user, self.group, self.user_email,
                      self.md, self.server_path]
         if None in mandatory:
-            logging.error("Cannot write import.json, missing or wrong information in one of the following items: username, group, metadata spreadsheet")
+            self.logger.error("Cannot write import.json, missing or wrong information in one of the following items: username, group, metadata spreadsheet")
             return False
         elif self.valid_md is False:
-            logging.error("Cannot write import.json, metadata spreadsheet contains invalid values.")
+            self.logger.error("Cannot write import.json, metadata spreadsheet contains invalid values.")
             return False
         elif len(self.import_target_list) == 0:
-            logging.error("Cannot write import.json, no valid import targets. Skipping empty import.")
+            self.logger.error("Cannot write import.json, no valid import targets. Skipping empty import.")
             return False
         else:
             import_json = {}
