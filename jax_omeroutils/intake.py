@@ -185,7 +185,6 @@ class ImportBatch:
     def set_logging(self):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         logfile = pathlib.Path(self.import_path) / pathlib.Path(f'{timestamp}.log')
-        print("log file path:", logfile)
         self.logger.setLevel(logging.DEBUG)
         fh = logging.FileHandler(logfile)
         fh.setLevel(logging.DEBUG)
