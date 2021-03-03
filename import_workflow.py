@@ -4,6 +4,8 @@ import argparse
 import pwd
 import sys
 import grp
+import pathlib
+import datetime
 
 
 def demote(user_uid, user_gid, homedir):
@@ -44,6 +46,15 @@ def main(target, datauser, omerouser):
     print(stdoutval, stderrval)
     json_path = retrieve_json(stdoutval)
     print(f'json path will be {json_path}')
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    out_path = pathlib.Path(json_path).parent / timestamp / ".out"
+    err_path = pathlib.Path(json_path).parent / timestamp / ".err"
+    with open(out_path, 'w') as fp:
+        fp.write(stdoutval)
+    fp.close()
+    with open(err_path, 'w') as fp:
+        fp.write(stderrval)
+    fp.close()
 
     # Run import_annotate_batch.py
     impbatch = [sys.executable, 'import_annotate_batch.py', json_path]
@@ -56,7 +67,12 @@ def main(target, datauser, omerouser):
     stdoutval, stderrval = process.communicate()
     stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
     print(stdoutval, stderrval)
-
+    with open(out_path, 'a') as fp:
+        fp.write(stdoutval)
+    fp.close()
+    with open(err_path, 'a') as fp:
+        fp.write(stderrval)
+    fp.close()
 
 if __name__ == '__main__':
     description = "One-command in-place importing sript"
