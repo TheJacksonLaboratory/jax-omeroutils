@@ -31,9 +31,10 @@ def main(import_batch_directory):
     conn.close()
 
     # Move files into place
-    mover = DataMover(import_batch_directory / 'import.json')
-    message = mover.move_data()
-    print(message)
+    if Path(import_batch_directory / 'import.json').exists():
+        mover = DataMover(import_batch_directory / 'import.json')
+        message = mover.move_data()
+        print(message)
     return
 
 
