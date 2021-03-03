@@ -18,8 +18,8 @@ def demote(user_uid, user_gid, homedir):
 
 
 def retrieve_json(stdoutval):
-    if (stdoutval == ""):
-        print("empty stdout")
+    if (not stdoutval):
+        return None
     last_line = stdoutval.split('\n')[-2]
     json_path = last_line.split(':')[-1].strip()
     return json_path
@@ -56,34 +56,35 @@ def main(target, datauser, omerouser):
     print("stdout:",stdoutval)
     print("stderr:",stderrval)
     json_path = retrieve_json(stdoutval)
-    print(f'json path will be {json_path}')
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    out_path = pathlib.Path(json_path).parent / timestamp / ".out"
-    err_path = pathlib.Path(json_path).parent / timestamp / ".err"
-    with open(out_path, 'w') as fp:
-        fp.write(stdoutval)
-    fp.close()
-    with open(err_path, 'w') as fp:
-        fp.write(stderrval)
-    fp.close()
+    if json_path:
+        print(f'json path will be {json_path}')
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        out_path = pathlib.Path(json_path).parent / timestamp / ".out"
+        err_path = pathlib.Path(json_path).parent / timestamp / ".err"
+        with open(out_path, 'w') as fp:
+            fp.write(stdoutval)
+        fp.close()
+        with open(err_path, 'w') as fp:
+            fp.write(stderrval)
+        fp.close()
 
-    # Run import_annotate_batch.py
-    impbatch = [sys.executable, curr_folder + '/import_annotate_batch.py', json_path]
-    process = subprocess.Popen(impbatch,
-                               preexec_fn=demote(omero_user_uid,
-                                                 omero_user_gid,
-                                                 omero_user_home),
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-    stdoutval, stderrval = process.communicate()
-    stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
-    print(stdoutval, stderrval)
-    with open(out_path, 'a') as fp:
-        fp.write(stdoutval)
-    fp.close()
-    with open(err_path, 'a') as fp:
-        fp.write(stderrval)
-    fp.close()
+        # Run import_annotate_batch.py
+        impbatch = [sys.executable, curr_folder + '/import_annotate_batch.py', json_path]
+        process = subprocess.Popen(impbatch,
+                                preexec_fn=demote(omero_user_uid,
+                                                    omero_user_gid,
+                                                    omero_user_home),
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        stdoutval, stderrval = process.communicate()
+        stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
+        print(stdoutval, stderrval)
+        with open(out_path, 'a') as fp:
+            fp.write(stdoutval)
+        fp.close()
+        with open(err_path, 'a') as fp:
+            fp.write(stderrval)
+        fp.close()
 
 if __name__ == '__main__':
     description = "One-command in-place importing sript"
