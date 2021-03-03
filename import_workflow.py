@@ -54,12 +54,12 @@ def main(target, datauser, omerouser):
     if json_path:
         print(f'json path will be {json_path}')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        out_path = pathlib.Path(json_path).parent / timestamp / ".out"
-        err_path = pathlib.Path(json_path).parent / timestamp / ".err"
-        with open(out_path, 'w') as fp:
+        out_path = pathlib.Path(json_path).parent / (timestamp + ".out")
+        err_path = pathlib.Path(json_path).parent / (timestamp + ".err")
+        with open(out_path, 'w+') as fp:
             fp.write(stdoutval)
         fp.close()
-        with open(err_path, 'w') as fp:
+        with open(err_path, 'w+') as fp:
             fp.write(stderrval)
         fp.close()
 
