@@ -33,6 +33,7 @@ def file_mover(file_path, destination_dir, tries=3):
     """Safely move a file to a destination directory. Will retry if initial
     attempts result in mismatching md5 digests.
     """
+    logger = logging.getLogger('intake')
     file_path = Path(file_path)
     destination_dir = Path(destination_dir)
     if file_path.exists() and destination_dir.exists():
@@ -45,9 +46,9 @@ def file_mover(file_path, destination_dir, tries=3):
             else:
                 fp = str(file_path)
                 err = f"checksum failed after copy attempt {i + 1} for {fp}"
-                logging.error(err)
+                logger.error(err)
                 os.remove(dest_file)
-    logging.error(f"Unable to copy {str(file_path)}")
+    logger.error(f"Unable to copy {str(file_path)}")
     return None
 
 
@@ -76,6 +77,7 @@ class DataMover:
     """
 
     def __init__(self, import_json_path):
+        self.logger = logging.getLogger('intake')
         self.import_json_path = Path(import_json_path)
 
         if not self.import_json_path.exists():
@@ -95,9 +97,11 @@ class DataMover:
         # Move files indicated in import.json
         for target in self.import_targets:
             src_fp = self.import_path / target['filename']
+            file = str(target['filename'])
             result = file_mover(src_fp, self.server_path)
             if result is not None:
                 print(f'File moved to {result}')
+                self.logger.debug(f'Success moving file {file} to the server. It will be imported.')
                 os.chmod(result, FILE_PERM)
 
         # Move import.json

@@ -22,6 +22,7 @@ def main(import_batch_directory):
                         port=OMERO_PORT)
     conn.connect()
     batch = ImportBatch(conn, import_batch_directory)
+    batch.set_logging()
     batch.load_md()
     batch.validate_import_md()
     batch.validate_user_group()
@@ -31,9 +32,10 @@ def main(import_batch_directory):
     conn.close()
 
     # Move files into place
-    mover = DataMover(import_batch_directory / 'import.json')
-    message = mover.move_data()
-    print(message)
+    if Path(import_batch_directory / 'import.json').exists():
+        mover = DataMover(import_batch_directory / 'import.json')
+        message = mover.move_data()
+        print(message)
     return
 
 

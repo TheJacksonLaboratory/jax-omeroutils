@@ -81,8 +81,10 @@ def test_ImportBatch_validate_ug(conn, users_groups):
     assert batch.user == 'test_user1'
     assert batch.group == 'test_group_1'
     assert batch.user_email == 'useremail@jax.org'
-    assert not batch.validate_user_group(user='test_user1', group='bad_group')
-    assert not batch.validate_user_group(user='bad_user', group='test_group_1')
+    with pytest.raises(ValueError):
+        batch.validate_user_group(user='test_user1', group='bad_group')
+    with pytest.raises(ValueError):
+        batch.validate_user_group(user='bad_user', group='test_group_1')
 
 
 def test_set_server_path():
