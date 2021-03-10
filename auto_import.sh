@@ -31,12 +31,14 @@ folder="$1"; shift 1;
 arguments="$*"
 for dir in $folder/*/; do 
     skip=false
-    for exc in $(cat $exclude); do
-        if [ "$(realpath $exc)" == "$(realpath $dir)" ] ; then
-            echo "Skipping" $dir " - directory in exclude file";
-            skip=true
-        fi
-    done
+    if [ "$exclude" ]; then
+        for exc in $(cat $exclude); do
+            if [ "$(realpath $exc)" == "$(realpath $dir)" ] ; then
+                echo "Skipping" $dir " - directory in exclude file";
+                skip=true
+            fi
+        done
+    fi
     if [ "$skip" = false ]; then
         echo "Processing" $dir;
         $IMPORT $dir $arguments; 
