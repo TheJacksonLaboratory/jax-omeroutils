@@ -28,6 +28,9 @@ while [ "$#" -gt 0 ]; do
 
 done
 folder="$1"; shift 1;
+# need to change into a folder where sudo has permission - using target folder
+cd folder
+
 arguments="$*"
 for dir in $folder/*/; do 
     skip=false
