@@ -13,7 +13,7 @@ from omero.gateway import BlitzGateway
 from pathlib import Path
 
 
-def main(import_batch_directory):
+def main(import_batch_directory, log_directory):
 
     # Validate import and write import.json
     conn = BlitzGateway(OMERO_USER,
@@ -22,7 +22,7 @@ def main(import_batch_directory):
                         port=OMERO_PORT)
     conn.connect()
     batch = ImportBatch(conn, import_batch_directory)
-    batch.set_logging()
+    batch.set_logging(log_directory)
     batch.load_md()
     batch.validate_import_md()
     batch.validate_user_group()
@@ -46,6 +46,9 @@ if __name__ == "__main__":
                         type=str,
                         help='Full path of directory containing images to'
                              ' import and single metadata file')
+    parser.add_argument('log_directory',
+                        type=str,
+                        help='Directory for the log files')
     args = parser.parse_args()
 
-    main(Path(args.import_batch_directory))
+    main(Path(args.import_batch_directory),Path(args.log_directory))
