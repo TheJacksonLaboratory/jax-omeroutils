@@ -24,6 +24,7 @@ def main(import_batch_directory, log_directory):
     batch = ImportBatch(conn, import_batch_directory)
     batch.set_logging(log_directory)
     batch.load_md()
+    batch.validate_import_md()
     print(batch.valid_md)
     if not batch.valid_md:
         print("raising value error")
