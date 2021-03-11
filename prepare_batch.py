@@ -24,7 +24,8 @@ def main(import_batch_directory, log_directory):
     batch = ImportBatch(conn, import_batch_directory)
     batch.set_logging(log_directory)
     batch.load_md()
-    batch.validate_import_md()
+    if not batch.valid_md:
+        raise ValueError('Metadata file has fatal errors.')
     batch.validate_user_group()
     batch.set_server_path()
     batch.load_targets()
