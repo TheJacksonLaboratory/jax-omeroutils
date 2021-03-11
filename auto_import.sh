@@ -32,7 +32,7 @@ folder="$1"; shift 1;
 cd "$(dirname "$0")"
 
 arguments="$*"
-for dir in $(find $folder -maxdepth 1 -type d -mmin +60); do 
+for dir in $(find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do 
     skip=false
     if [ "$exclude" ]; then
         for exc in $(cat $exclude); do
