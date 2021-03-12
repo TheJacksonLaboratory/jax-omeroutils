@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 
 
 usage="$(basename "$0") [-h] [-e exclude ] target_folder [optional arguments] -- runs imports on all subfolders from the argument folder.
