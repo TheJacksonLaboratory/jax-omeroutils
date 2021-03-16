@@ -1,0 +1,24 @@
+
+n
+From: noreply-omero-importer@jax.org
+Subject: omero import log for folder $dir
+aaaaa
+\n\nAll image files from your folder were imported and the folder will be deleted soon.\n
+                    (that does NOT mean that all files in your SPREADSHEET were imported; it is your 
+                    responsibility to check all files from your submission were present in the folder.\n
+All image files from your folder were imported and the folder will be deleted soon.
+(that does NOT mean that all files in your SPREADSHEET were imported; it is your 
+responsibility to check all files from your submission were present in the folder.
+
+
+All image files from your folder were imported and the folder will be deleted soon.
+
+            (that does NOT mean that all files in your SPREADSHEET were imported; it is your 
+
+            responsibility to check all files from your submission were present in the folder.
+
+
+All image files from your folder were imported and the folder will be deleted soon.
+(that does NOT mean that all files in your SPREADSHEET were imported; it is your
+responsibility to check all files from your submission were present in the folder.
+

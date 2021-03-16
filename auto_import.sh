@@ -68,8 +68,32 @@ for dir in $(find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do
         if [ $allfiles -eq $nonimages ]; then
             empty=true
         fi
-        
+        logfile = $(find $folder/$dir -mindepth 1 -maxdepth 1 -regex ".*\.\(log\)" -type f -mmax +10
 
+        # add message for empty folder
+        if [ "$empty" = true ]; then
+            echo -e "\n\nAll image files from your folder were imported and the folder will be deleted soon." >> $logfile
+            echo "(that does NOT mean that all files in your SPREADSHEET were imported; it is your" >>$logfile
+            echo -e "responsibility to check all files from your submission were present in the folder.)\n" >>$logfile
+        fi
+
+        # send email if necessary
+        if [ "$email" = true ]; then
+            #retrieve email of user
+            $address = ???????
+
+            # add subject/to/from for email
+            sed -i "1s/^/\n/" $logfile
+            sed -i "1iSubject: omero import log for folder $dir" $logfile
+            sed -i "1iFrom: noreply-omero-importer@jax.org" $logfile
+            sed -i "1iTo: $address" $logfile
+
+            #send email
+            ssmtp $address < $logfile
+
+            # remove email-specific lines
+            sed -i '1,4d' $logfile
+        fi
     fi
 
     
