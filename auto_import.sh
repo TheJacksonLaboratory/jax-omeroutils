@@ -31,8 +31,13 @@ folder="$1"; shift 1;
 # need to change into a folder where sudo has permission - using folder where script is
 cd "$(dirname "$0")"
 
+
+
+
 arguments="$*"
+# check for folders last modified more than 60 mins ago
 for dir in $(find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do 
+
     skip=false
     if [ "$exclude" ]; then
         for exc in $(cat $exclude); do
@@ -43,9 +48,30 @@ for dir in $(find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do
         done
     fi
     if [ "$skip" = false ]; then
+
+        # check whether email will need to be sent
+        email=false
+        # time cutoff is 60 mins + gap between cron runs (in our case, 360 mins)
+        modified = $(find $folder/$dir -mindepth 1 -maxdepth 1 -type f -mmin +420 | wc -l)
+        if [ $modified -gt 1 ]; then
+            email=true
+        fi
+
+        
         echo "Processing" $dir;
         $IMPORT $dir $arguments; 
+
+        #check whether folder is "empty" now
+        empty=false
+        allfiles = $(find $folder/$dir -mindepth 1 -maxdepth 1 -type f | wc -l)
+        nonimages = $(find $folder/$dir -mindepth 1 -maxdepth 1 -regex ".*\.\(xlsx\|csv\|log\|json\|db\|txt\)" -type f | wc -l)
+        if [ $allfiles -eq $nonimages ]; then
+            empty=true
+        fi
+        
+
     fi
+
     
 done
 
