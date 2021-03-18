@@ -53,18 +53,20 @@ for dir in $(find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do
         email=false
         # time cutoff is 60 mins + gap between cron runs (in our case, 360 mins)
         modified=$(find $dir -mindepth 1 -maxdepth 1 -type f -mmin -420 | wc -l)
+        echo "Folder has $modified modified files since last cron run."
         if [ $modified -gt 1 ]; then
             email=true
         fi
 
-        
+        # actually do imports
         echo "Processing" $dir;
         $IMPORT $dir $arguments; 
 
         #check whether folder is "empty" now
         empty=false
         allfiles=$(find $dir -mindepth 1 -maxdepth 1 -type f | wc -l)
-        nonimages=$(find $dir -mindepth 1 -maxdepth 1 -regex ".*\.\(xlsx\|csv\|log\|json\|db\|txt\)" -type f | wc -l)
+        nonimages=$(find $dir -mindepth 1 -maxdepth 1 -regex ".*\.\(xlsx\|csv\|log\|json\|db\|ini\|txt\)" -type f | wc -l)
+        echo "Folder has $allfiles files left, of which $nonimages are typical non-images."
         if [ $allfiles -eq $nonimages ]; then
             empty=true
         fi
@@ -72,6 +74,7 @@ for dir in $(find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do
         empty_msg=""
         # add message for empty folder
         if [ "$empty" = true ]; then
+            echo "folder is now empty - adding message to email"
             empty_msg=$( echo -e "\n\nAll image files from your folder were imported and the folder will be deleted soon." && \
             echo "(that does NOT mean that all files in your SPREADSHEET were imported; it is your" && \
             echo -e "responsibility to check all files from your submission were present in the folder.)\n" )
