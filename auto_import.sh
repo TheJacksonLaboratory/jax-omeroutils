@@ -52,7 +52,7 @@ for dir in $(find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do
         # check whether email will need to be sent
         email=false
         # time cutoff is 60 mins + gap between cron runs (in our case, 360 mins)
-        modified = $(find $folder/$dir -mindepth 1 -maxdepth 1 -type f -mmin +420 | wc -l)
+        modified=$(find $dir -mindepth 1 -maxdepth 1 -type f -mmin -420 | wc -l)
         if [ $modified -gt 1 ]; then
             email=true
         fi
@@ -63,36 +63,36 @@ for dir in $(find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do
 
         #check whether folder is "empty" now
         empty=false
-        allfiles = $(find $folder/$dir -mindepth 1 -maxdepth 1 -type f | wc -l)
-        nonimages = $(find $folder/$dir -mindepth 1 -maxdepth 1 -regex ".*\.\(xlsx\|csv\|log\|json\|db\|txt\)" -type f | wc -l)
+        allfiles=$(find $dir -mindepth 1 -maxdepth 1 -type f | wc -l)
+        nonimages=$(find $dir -mindepth 1 -maxdepth 1 -regex ".*\.\(xlsx\|csv\|log\|json\|db\|txt\)" -type f | wc -l)
         if [ $allfiles -eq $nonimages ]; then
             empty=true
         fi
-        logfile = $(find $folder/$dir -mindepth 1 -maxdepth 1 -regex ".*\.\(log\)" -type f -mmax +10
-
+        logfile=$(find $dir -mindepth 1 -maxdepth 1 -regex ".*\.\(log\)" -type f -mmin -10)
+        empty_msg=""
         # add message for empty folder
         if [ "$empty" = true ]; then
-            echo -e "\n\nAll image files from your folder were imported and the folder will be deleted soon." >> $logfile
-            echo "(that does NOT mean that all files in your SPREADSHEET were imported; it is your" >>$logfile
-            echo -e "responsibility to check all files from your submission were present in the folder.)\n" >>$logfile
+            empty_msg=( echo -e "\n\nAll image files from your folder were imported and the folder will be deleted soon." && \
+            echo "(that does NOT mean that all files in your SPREADSHEET were imported; it is your" && \
+            echo -e "responsibility to check all files from your submission were present in the folder.)\n" )
         fi
 
         # send email if necessary
         if [ "$email" = true ]; then
             #retrieve email of user by splitting dir name on underscore
-            $address = $(echo $dir | cut -f1 -d_)
-
-            # add subject/to/from for email
-            sed -i "1s/^/\n/" $logfile
-            sed -i "1iSubject: omero import log for folder $dir" $logfile
-            sed -i "1iFrom: noreply-omero-importer@jax.org" $logfile
-            sed -i "1iTo: $address" $logfile
+            address=$(echo ${dir##*/} | cut -f1 -d_)"@jax.org"
+            echo "Sending email to user $address"
 
             #send email
-            ssmtp $address < $logfile
+            (
+                                echo "To: $address" && \
+                                echo "From: noreply-omero-importer@jax.org" && \
+                                echo "Subject: omero import log for folder $dir" && \
+                                echo "" && \
+                                cat $logfile && \
+                                echo "$empty_msg"
+                                ) | ssmtp $address
 
-            # remove email-specific lines
-            sed -i '1,4d' $logfile
         fi
     fi
 
