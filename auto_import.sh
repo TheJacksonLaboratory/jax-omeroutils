@@ -72,7 +72,7 @@ for dir in $(find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do
         empty_msg=""
         # add message for empty folder
         if [ "$empty" = true ]; then
-            empty_msg=( echo -e "\n\nAll image files from your folder were imported and the folder will be deleted soon." && \
+            empty_msg=$( echo -e "\n\nAll image files from your folder were imported and the folder will be deleted soon." && \
             echo "(that does NOT mean that all files in your SPREADSHEET were imported; it is your" && \
             echo -e "responsibility to check all files from your submission were present in the folder.)\n" )
         fi
