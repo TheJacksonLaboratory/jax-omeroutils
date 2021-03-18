@@ -79,8 +79,8 @@ for dir in $(find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do
 
         # send email if necessary
         if [ "$email" = true ]; then
-            #retrieve email of user
-            $address = ???????
+            #retrieve email of user by splitting dir name on underscore
+            $address = $(echo $dir | cut -f1 -d_)
 
             # add subject/to/from for email
             sed -i "1s/^/\n/" $logfile
