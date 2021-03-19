@@ -85,16 +85,17 @@ for dir in $(find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do
             #retrieve email of user by splitting dir name on underscore
             address=$(echo ${dir##*/} | cut -f1 -d_)"@jax.org"
             echo "Sending email to user $address"
-
+            email_dir=${dir##*/}
             #send email
             (
                                 echo "To: $address" && \
                                 echo "From: noreply-omero-importer@jax.org" && \
-                                echo "Subject: omero import log for folder $dir" && \
+                                echo "Subject: omero import log for folder $email_dir" && \
                                 echo "" && \
                                 cat $logfile && \
                                 echo "$empty_msg"
-                                ) | ssmtp $address
+                                ) > temp_email.txt
+            ssmtp $address < temp_email.txt
 
         fi
     fi
