@@ -48,18 +48,18 @@ for dir in $(find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do
         done
     fi
     if [ "$skip" = false ]; then
-
+        echo "Processing" $dir;
         # check whether email will need to be sent
         email=false
         # time cutoff is 60 mins + gap between cron runs (in our case, 360 mins)
-        modified=$(find $dir -mindepth 1 -maxdepth 1 -type f -mmin -420 | wc -l)
+        modified=$(find $dir -mindepth 1 -maxdepth 1 -type f -cmin -420 | wc -l)
         echo "Folder has $modified modified files since last cron run."
         if [ $modified -gt 1 ]; then
             email=true
         fi
 
         # actually do imports
-        echo "Processing" $dir;
+        
         $IMPORT $dir $arguments; 
 
         #check whether folder is "empty" now
