@@ -94,8 +94,8 @@ for dir in $(find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do
                                 echo "" && \
                                 cat $logfile && \
                                 echo "$empty_msg"
-                                ) > temp_email.txt
-            ssmtp $address < temp_email.txt
+                                ) > $HOME/temp_email.txt
+            ssmtp $address < $HOME/temp_email.txt
 
         fi
     fi
