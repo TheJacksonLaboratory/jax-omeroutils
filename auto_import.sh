@@ -81,7 +81,7 @@ for dir in $(find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do
         fi
 
         # send email if necessary
-        if [ "$email" = true ]; then
+        if [ "$email" = true -a -f $logfile ]; then
             #retrieve email of user by splitting dir name on underscore
             address=$(echo ${dir##*/} | cut -f1 -d_)"@jax.org"
             echo "Sending email to user $address"
