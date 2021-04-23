@@ -10,7 +10,7 @@ def main(group, admin_user, server, port):
     conn.connect()
     group_id = get_group_id(conn, group)
     conn.SERVICE_OPTS.setOmeroGroup(group_id)
-    image_ids = get_image_ids(conn)
+    image_ids = get_image_ids(conn, across_groups=False)
     with open("omeroImages2Import.tsv", 'w') as f:
         f.write('omero_id\timage_file\timage_name\n')
         for im_id in image_ids:
