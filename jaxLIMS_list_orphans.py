@@ -2,6 +2,7 @@ import argparse
 from getpass import getpass
 from omero.gateway import BlitzGateway
 from ezomero import get_image_ids, get_group_id, get_image
+from ezomero import get_original_filepaths
 
 
 def main(group, admin_user, server, port):
@@ -15,8 +16,7 @@ def main(group, admin_user, server, port):
         f.write('omero_id\timage_file\timage_name\n')
         for im_id in image_ids:
             im_o, _ = get_image(conn, im_id, no_pixels=True)
-            imp_files = im_o.getImportedImageFiles()
-            imp_filename = list(imp_files)[0].getName()
+            imp_filename = get_original_filepaths(conn, im_id)[0]
             image_name = im_o.getName()
             out_string = f'{im_id}\t{imp_filename}\t{image_name}\n'
             f.write(out_string)
