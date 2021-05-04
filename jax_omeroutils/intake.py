@@ -182,15 +182,19 @@ class ImportBatch:
         self.import_target_list = []  # List of ImportTarget objects
         self.logger = logging.getLogger('intake')
         
-    def set_logging(self):
+    def set_logging(self, log_directory):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         logfile = pathlib.Path(self.import_path) / pathlib.Path(f'{timestamp}.log')
+        server_logfile = pathlib.Path(log_directory) / pathlib.Path(f'{timestamp}.log')
         self.logger.setLevel(logging.DEBUG)
         fh = logging.FileHandler(logfile)
         fh.setLevel(logging.DEBUG)
+        sh = logging.FileHandler(server_logfile)
+        sh.setLevel(logging.DEBUG)
         ch = logging.StreamHandler()
         ch.setLevel(logging.DEBUG)
         self.logger.addHandler(fh)
+        self.logger.addHandler(sh)
         self.logger.addHandler(ch)
 
     def load_md(self, sheet_name="Submission Form"):

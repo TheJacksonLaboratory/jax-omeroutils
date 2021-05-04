@@ -24,7 +24,7 @@ def retrieve_json(stdoutval):
     return json_path
 
 
-def main(target, datauser, omerouser):
+def main(target, datauser, omerouser, logdir):
 
     # Data user info
     data_user_uid = pwd.getpwnam(datauser).pw_uid
@@ -39,7 +39,7 @@ def main(target, datauser, omerouser):
     curr_folder = os.path.abspath(os.path.dirname(__file__))
 
     # Run prepare_batch.py
-    prepbatch = [sys.executable, curr_folder + '/prepare_batch.py', target]
+    prepbatch = [sys.executable, curr_folder + '/prepare_batch.py', target, logdir]
     process = subprocess.Popen(prepbatch,
                                preexec_fn=demote(data_user_uid,
                                                  data_user_gid,
@@ -51,7 +51,7 @@ def main(target, datauser, omerouser):
     print("stdout:",stdoutval)
     print("stderr:",stderrval)
     json_path = retrieve_json(stdoutval)
-    if json_path:
+    if pathlib.Path(json_path).exists():
         print(f'json path will be {json_path}')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         out_path = pathlib.Path(json_path).parent / (timestamp + ".out")
@@ -95,5 +95,9 @@ if __name__ == '__main__':
                         type=str,
                         help='System username for the omero user',
                         default='svc-omero')
+    parser.add_argument('--logdir',
+                        type=str,
+                        help='Directory for the log files',
+                        default='/tmp/cron_logs')
     args = parser.parse_args()
-    main(args.target, args.datauser, args.omerouser)
+    main(args.target, args.datauser, args.omerouser, args.logdir)
