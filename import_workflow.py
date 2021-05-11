@@ -51,7 +51,7 @@ def main(target, datauser, omerouser, logdir):
     print("stdout:",stdoutval)
     print("stderr:",stderrval)
     json_path = retrieve_json(stdoutval)
-    if pathlib.Path(json_path).exists():
+    if json_path and pathlib.Path(json_path).exists():
         print(f'json path will be {json_path}')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         out_path = pathlib.Path(json_path).parent / (timestamp + ".out")
