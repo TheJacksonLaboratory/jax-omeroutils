@@ -118,9 +118,17 @@ def load_md_from_file(md_filepath, sheet_name=0):
                        skiprows=range(4),
                        dtype=str,
                        engine="openpyxl")
+    
+    # fixing rogue lines, rogue columns, rogue leading/trailing spaces in any string column
+    md = md.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+    md = md.dropna(subset=['filename', 'project', 'dataset']).dropna(axis='columns', how='all')
+
+    # protect against extra spaces on 'omero user' and 'omero group'
+    md_header.index = md_header.index.str.strip()
     md_json = {}
-    md_json['omero_user'] = md_header.loc['OMERO user:', 1]
-    md_json['omero_group'] = md_header.loc['OMERO group:', 1]
+    # added 'strip' to protect against leading/trailing spaces
+    md_json['omero_user'] = md_header.loc['OMERO user:', 1].strip()
+    md_json['omero_group'] = md_header.loc['OMERO group:', 1].strip()
     md_json['file_metadata'] = md.to_dict(orient='records')
     return(md_json)
 
