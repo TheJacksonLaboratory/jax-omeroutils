@@ -44,13 +44,13 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
     if [ "$exclude" ]; then
         for exc in $(cat $exclude); do
             if [ "$(realpath $exc)" == "$(realpath $dir)" ] ; then
-                echo "Skipping" $dir " - directory in exclude file";
+                echo "Skipping" "$dir" " - directory in exclude file";
                 skip=true
             fi
         done
     fi
     if [ "$skip" = false ]; then
-        echo "Processing" $dir;
+        echo "Processing" "$dir";
         # check whether email will need to be sent
         email=false
         # time cutoff is 60 mins + gap between cron runs (in our case, 360 mins)
@@ -62,7 +62,7 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
 
         # actually do imports
         
-        $IMPORT $dir $arguments; 
+        $IMPORT "$dir" "$arguments"; 
 
         #check whether folder is "empty" now
         empty=false
@@ -83,9 +83,9 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
         fi
 
         # send email if necessary
-        if [ "$email" = true -a -f $logfile ]; then
+        if [ "$email" = true ] && [ -f "$logfile" ]; then
             #retrieve email of user by splitting dir name on underscore
-            address=$(echo ${dir##*/} | cut -f1 -d_)"@jax.org"
+            address=$(echo "${dir##*/}" | cut -f1 -d_)"@jax.org"
             echo "Sending email to user $address"
             email_dir=${dir##*/}
             #send email
@@ -96,12 +96,10 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
                                 echo "" && \
                                 sudo -u $user cat $logfile && \
                                 echo "$empty_msg"
-                                ) > $HOME/temp_email.txt
-            ssmtp $address < $HOME/temp_email.txt
+                                ) > "$HOME"/temp_email.txt
+            ssmtp $address < "$HOME"/temp_email.txt
 
         fi
     fi
-
-    
 done
 

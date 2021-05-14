@@ -24,6 +24,8 @@ def main(import_batch_directory, log_directory):
     batch = ImportBatch(conn, import_batch_directory)
     batch.set_logging(log_directory)
     batch.load_md()
+    if not batch.md:
+        raise ValueError('No metadata file found.')
     batch.validate_import_md()
     if not batch.valid_md:
         raise ValueError('Metadata file has fatal errors.')
