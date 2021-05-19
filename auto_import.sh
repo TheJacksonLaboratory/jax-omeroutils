@@ -62,7 +62,7 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
 
         # actually do imports
         
-        $IMPORT "$dir" "$arguments"; 
+        $IMPORT "$dir" $arguments; 
 
         #check whether folder is "empty" now
         empty=false
