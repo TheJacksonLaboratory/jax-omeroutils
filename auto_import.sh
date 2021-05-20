@@ -59,7 +59,7 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
         if [ $modified -gt 1 ]; then
             email=true
         fi
-
+        echo "Will I send an email? $email"
         # actually do imports
         
         $IMPORT "$dir" $arguments; 
@@ -80,6 +80,10 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
             empty_msg=$( echo -e "\n\nAll image files from your folder were imported and the folder will be deleted soon." && \
             echo "(that does NOT mean that all files in your SPREADSHEET were imported; it is your" && \
             echo -e "responsibility to check all files from your submission were present in the folder.)\n" )
+        fi
+
+        if [ -f "$logfile" ]; then
+            echo "I have found the logfile"
         fi
 
         # send email if necessary
