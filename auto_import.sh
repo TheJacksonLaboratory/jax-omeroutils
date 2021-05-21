@@ -87,7 +87,7 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
         fi
 
         # send email if necessary
-        if [ "$email" = true ] && [ -f "$logfile" ]; then
+        if [ "$email" = true ] && sudo -u $user [ -f "$logfile" ]; then
             #retrieve email of user by splitting dir name on underscore
             address=$(echo "${dir##*/}" | cut -f1 -d_)"@jax.org"
             echo "Sending email to user $address"
