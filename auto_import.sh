@@ -81,8 +81,8 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
             echo "(that does NOT mean that all files in your SPREADSHEET were imported; it is your" && \
             echo -e "responsibility to check all files from your submission were present in the folder.)\n" )
         fi
-
-        if [ -f "$logfile" ]; then
+        echo "logfile should be at $logfile"
+        if sudo -u $user [ -f "$logfile" ]; then
             echo "I have found the logfile"
         fi
 
