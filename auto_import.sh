@@ -89,9 +89,24 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
         # send email if necessary
         if [ "$email" = true ] && sudo -u $user [ -f "$logfile" ]; then
             #retrieve email of user by splitting dir name on underscore
-            address=$(echo "${dir##*/}" | cut -f1 -d_)"@jax.org"
+            address=$(basename $dir | cut -f1 -d_)"@jax.org"
+            address_owner=$(find $dir -maxdepth 0 -printf '%u\n')"@jax.org"
             echo "Sending email to user $address"
-            email_dir=${dir##*/}
+            email_dir=$(basename $dir)
+            if [ $address_owner != $address ]; then
+                echo "Also sending email to user $address_owner"
+                (
+                                echo "To: $address_owner" && \
+                                echo "From: noreply-omero-importer@jax.org" && \
+                                echo "Subject: omero import log for folder $email_dir" && \
+                                echo "" && \
+                                sudo -u $user cat $logfile && \
+                                echo "$empty_msg"
+                                ) > "$HOME"/temp_email_owner.txt
+                ssmtp $address_owner < "$HOME"/temp_email_owner.txt
+
+            fi
+            
             #send email
             (
                                 echo "To: $address" && \
