@@ -104,7 +104,6 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
                                 echo "$empty_msg"
                                 ) > "$HOME"/temp_email_owner.txt
                 ssmtp $address_owner < "$HOME"/temp_email_owner.txt
-                sleep 1m
             fi
             
             #send email
@@ -117,7 +116,6 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
                                 echo "$empty_msg"
                                 ) > "$HOME"/temp_email.txt
             ssmtp $address < "$HOME"/temp_email.txt
-            sleep 1m
         fi
     fi
 done
