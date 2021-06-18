@@ -17,6 +17,7 @@ exclude=""
 folder=""
 arguments=""
 user="svc-omerodata"
+maxtries=10
 
 ##Parse arguments
 while [ "$#" -gt 0 ]; do
@@ -44,13 +45,13 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
     if [ "$exclude" ]; then
         for exc in $(cat $exclude); do
             if [ "$(realpath $exc)" == "$(realpath $dir)" ] ; then
-                echo "Skipping" $dir " - directory in exclude file";
+                echo "Skipping" "$dir" " - directory in exclude file";
                 skip=true
             fi
         done
     fi
     if [ "$skip" = false ]; then
-        echo "Processing" $dir;
+        echo "Processing" "$dir";
         # check whether email will need to be sent
         email=false
         # time cutoff is 60 mins + gap between cron runs (in our case, 360 mins)
@@ -59,10 +60,10 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
         if [ $modified -gt 1 ]; then
             email=true
         fi
-
+        echo "Will I send an email? $email"
         # actually do imports
         
-        $IMPORT $dir $arguments; 
+        $IMPORT "$dir" $arguments; 
 
         #check whether folder is "empty" now
         empty=false
@@ -81,13 +82,38 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
             echo "(that does NOT mean that all files in your SPREADSHEET were imported; it is your" && \
             echo -e "responsibility to check all files from your submission were present in the folder.)\n" )
         fi
+        echo "logfile should be at $logfile"
+        if sudo -u $user [ -f "$logfile" ]; then
+            echo "I have found the logfile"
+        fi
 
         # send email if necessary
-        if [ "$email" = true -a -f $logfile ]; then
+        if [ "$email" = true ] && sudo -u $user [ -f "$logfile" ]; then
             #retrieve email of user by splitting dir name on underscore
-            address=$(echo ${dir##*/} | cut -f1 -d_)"@jax.org"
+            address=$(basename $dir | cut -f1 -d_)"@jax.org"
+            address_owner=$(find $dir -maxdepth 0 -printf '%u\n')"@jax.org"
             echo "Sending email to user $address"
-            email_dir=${dir##*/}
+            email_dir=$(basename $dir)
+            if [ $address_owner != $address ]; then
+                echo "Also sending email to user $address_owner"
+                (
+                                echo "To: $address_owner" && \
+                                echo "From: noreply-omero-importer@jax.org" && \
+                                echo "Subject: omero import log for folder $email_dir" && \
+                                echo "" && \
+                                sudo -u $user cat $logfile && \
+                                echo "$empty_msg"
+                                ) > "$HOME"/temp_email_owner.txt
+                ssmtp $address_owner < "$HOME"/temp_email_owner.txt
+                err=$?
+                tries=1
+                while [ $err -ne 0 ] && [ $tries -le $maxtries ]; do 
+                    ssmtp $address_owner < "$HOME"/temp_email_owner.txt 
+                    err=$? 
+                    ((tries+=1))
+                done
+            fi
+            
             #send email
             (
                                 echo "To: $address" && \
@@ -96,12 +122,16 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
                                 echo "" && \
                                 sudo -u $user cat $logfile && \
                                 echo "$empty_msg"
-                                ) > $HOME/temp_email.txt
-            ssmtp $address < $HOME/temp_email.txt
-
+                                ) > "$HOME"/temp_email.txt
+            ssmtp $address < "$HOME"/temp_email.txt
+            err=$?
+            tries=1
+            while [ $err -ne 0 ] && [ $tries -le $maxtries ]; do 
+                ssmtp $address_owner < "$HOME"/temp_email_owner.txt 
+                err=$? 
+                ((tries+=1))
+            done
         fi
     fi
-
-    
 done
 
