@@ -109,6 +109,7 @@ def load_md_from_file(md_filepath, sheet_name=0):
                               nrows=4,
                               index_col=0,
                               header=None,
+                              dtype=str,
                               engine="openpyxl")
     except KeyError:
         logger.error("Your spreadsheet does not have a Submission Form sheet - please use our template for submission!")
