@@ -45,12 +45,14 @@ def main(target, datauser, omerouser, logdir):
                                                  data_user_gid,
                                                  data_user_home),
                                stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
+                               stderr=subprocess.PIPE
+                               )
     stdoutval, stderrval = process.communicate()
     stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
-    print("stdout:",stdoutval)
-    print("stderr:",stderrval)
+    print("stdout prep:",stdoutval)
+    print("stderr prep:",stderrval)
     json_path = retrieve_json(stdoutval)
+    #fileset_list = retrieve_fileset(stdoutval)
     if json_path and pathlib.Path(json_path).exists():
         print(f'json path will be {json_path}')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -73,7 +75,8 @@ def main(target, datauser, omerouser, logdir):
                                 stderr=subprocess.PIPE)
         stdoutval, stderrval = process.communicate()
         stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
-        print(stdoutval, stderrval)
+        print("stdout import:",stdoutval)
+        print("stderr import:",stderrval)
         with open(out_path, 'a') as fp:
             fp.write(stdoutval)
         fp.close()
