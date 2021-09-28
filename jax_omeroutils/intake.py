@@ -9,8 +9,10 @@ and is not suitable for handling, e.g., HCS plate imports.
 import logging
 import pathlib
 import json
+import io
 import pandas as pd
 from datetime import datetime
+from contextlib import redirect_stdout
 from importlib import import_module
 from ezomero import get_user_id
 from omero.cli import CLI
@@ -338,7 +340,12 @@ class ImportBatch:
         for md_entry in self.md['file_metadata']:
             imp_target = ImportTarget(self.import_path, md_entry)
             if imp_target.exists:
-                imp_target.validate_target()
+                f = io.StringIO()
+                with redirect_stdout(f):
+                    imp_target.validate_target()
+                outputs = f.getvalue()
+                print("captured stdout:")
+                print(outputs)
             else:
                 err = f'Target does not exist: {imp_target.path_to_target}. This file is in your spreadsheet but not in your folder, and will not be imported.'
                 self.logger.error(err)
