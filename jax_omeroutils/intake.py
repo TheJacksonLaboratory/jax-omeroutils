@@ -337,6 +337,7 @@ class ImportBatch:
     def load_targets(self):
         """Populate ``self.import_target_list`` with valid ImportTarget objects
         """
+        print("entering load_targets")
         for md_entry in self.md['file_metadata']:
             imp_target = ImportTarget(self.import_path, md_entry)
             if imp_target.exists:
