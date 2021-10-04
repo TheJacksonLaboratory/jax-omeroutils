@@ -36,7 +36,7 @@ def retrieve_fileset(stdoutval, target):
     print("this is target:")
     print(target)
     with open('filelist.txt', 'w') as f:
-        f.write(files)
+        f.write("\n".join(files))
         f.close()
     return 
 
