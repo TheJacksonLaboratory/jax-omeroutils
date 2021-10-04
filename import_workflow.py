@@ -28,7 +28,7 @@ def retrieve_json(stdoutval):
 def retrieve_fileset(stdoutval, target):
     lines = stdoutval.split('\n')
     files = [i for i in lines if ((not i.startswith('#')) and (i != ''))]
-    filelist_path = pathlib.Path(target) / 'filelist.txt'
+    filelist_path = pathlib.Path(target) / 'moved_files.txt'
     with open(filelist_path, 'w') as f:
         f.write("\n".join(files))
         f.close()
@@ -77,7 +77,8 @@ def main(target, datauser, omerouser, logdir):
     stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
     print("stdout move:",stdoutval)
     print("stderr move:",stderrval)
-
+    print(json_path)
+    print(pathlib.Path(json_path).exists())
     if json_path and pathlib.Path(json_path).exists():
         print(f'json path will be {json_path}')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
