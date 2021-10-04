@@ -36,7 +36,7 @@ def retrieve_fileset(stdoutval, target):
     print("\n".join(files))
     print("this is target:")
     print(target)
-    with open(pathlib.Path(target / 'filelist.txt'), 'w') as f:
+    with open(pathlib.Path(target) / 'filelist.txt', 'w') as f:
         f.write("\n".join(files))
         f.close()
     return 
