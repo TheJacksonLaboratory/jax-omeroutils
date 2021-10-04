@@ -93,7 +93,8 @@ class DataMover:
         else:
             with open(fileset_list_path, 'r') as f_list:
                 self.fileset_list = f_list.readlines()
-
+        print("file list:")
+        print(self.fileset_list)
         self.import_path = Path(self.import_json['import_path'])
         self.server_path = Path(self.import_json['server_path'])
         self.import_targets = self.import_json['import_targets']
