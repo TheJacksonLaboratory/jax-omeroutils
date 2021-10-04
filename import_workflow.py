@@ -65,7 +65,7 @@ def main(target, datauser, omerouser, logdir):
     json_path = retrieve_json(stdoutval)
     fileset_list = retrieve_fileset(stdoutval, target)
 
-    datamove = [sys.executable, curr_folder + '/move_data.py', json_path, fileset_list]
+    datamove = [sys.executable, curr_folder + '/move_data.py', target, fileset_list]
     process = subprocess.Popen(datamove,
                                preexec_fn=demote(data_user_uid,
                                                  data_user_gid,
