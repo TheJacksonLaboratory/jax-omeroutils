@@ -62,7 +62,6 @@ def main(target, datauser, omerouser, logdir):
     stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
     print("stdout prep:",stdoutval)
     print("stderr prep:",stderrval)
-    json_path = retrieve_json(stdoutval)
     fileset_list = retrieve_fileset(stdoutval, target)
 
     datamove = [sys.executable, curr_folder + '/move_data.py', target, fileset_list]
@@ -75,6 +74,7 @@ def main(target, datauser, omerouser, logdir):
                                )
     stdoutval, stderrval = process.communicate()
     stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
+    json_path = retrieve_json(stdoutval)
     print("stdout move:",stdoutval)
     print("stderr move:",stderrval)
     print(json_path)
