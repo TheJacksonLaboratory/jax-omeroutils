@@ -8,7 +8,6 @@ import argparse
 from jax_omeroutils.intake import ImportBatch
 from jax_omeroutils.config import OMERO_USER, OMERO_PASS
 from jax_omeroutils.config import OMERO_HOST, OMERO_PORT
-from jax_omeroutils.datamover import DataMover
 from omero.gateway import BlitzGateway
 from pathlib import Path
 
@@ -35,12 +34,7 @@ def main(import_batch_directory, log_directory):
     batch.write_json()
     conn.close()
 
-    # Move files into place
-    if Path(import_batch_directory / 'import.json').exists():
-        mover = DataMover(import_batch_directory / 'import.json')
-        message = mover.move_data()
-        print(message)
-    return
+    
 
 
 if __name__ == "__main__":

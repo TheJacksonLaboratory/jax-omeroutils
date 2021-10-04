@@ -24,6 +24,12 @@ def retrieve_json(stdoutval):
     return json_path
 
 
+def retrieve_fileset(stdoutval):
+    print("this is stdoutval that will need to be parsed:")
+    print(stdoutval)
+    return
+
+
 def main(target, datauser, omerouser, logdir):
 
     # Data user info
@@ -52,7 +58,21 @@ def main(target, datauser, omerouser, logdir):
     print("stdout prep:",stdoutval)
     print("stderr prep:",stderrval)
     json_path = retrieve_json(stdoutval)
-    #fileset_list = retrieve_fileset(stdoutval)
+    fileset_list = retrieve_fileset(stdoutval)
+
+    datamove = [sys.executable, curr_folder + '/move_data.py', json_path, fileset_list]
+    process = subprocess.Popen(datamove,
+                               preexec_fn=demote(data_user_uid,
+                                                 data_user_gid,
+                                                 data_user_home),
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE
+                               )
+    stdoutval, stderrval = process.communicate()
+    stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
+    print("stdout move:",stdoutval)
+    print("stderr move:",stderrval)
+
     if json_path and pathlib.Path(json_path).exists():
         print(f'json path will be {json_path}')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')

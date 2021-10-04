@@ -76,15 +76,21 @@ class DataMover:
         into OMERO and hence moved.
     """
 
-    def __init__(self, import_json_path):
+    def __init__(self, import_json_path, fileset_list_path):
         self.logger = logging.getLogger('intake')
         self.import_json_path = Path(import_json_path)
+        self.fileset_list_path = Path(fileset_list_path)
 
         if not self.import_json_path.exists():
             raise FileNotFoundError('import.json not found')
         else:
             with open(import_json_path, 'r') as f:
                 self.import_json = json.load(f)
+        if not self.fileset_list_path.exists():
+            raise FileNotFoundError('list of files not found')
+        else:
+            with open(fileset_list_path, 'r') as f_list:
+                self.fileset_list = f_list.readlines()
 
         self.import_path = Path(self.import_json['import_path'])
         self.server_path = Path(self.import_json['server_path'])
@@ -94,7 +100,7 @@ class DataMover:
         # Prepare destination
         self.server_path.mkdir(mode=DIR_PERM, parents=True, exist_ok=True)
 
-        # Move files indicated in import.json
+        # Move import targets first
         for target in self.import_targets:
             src_fp = self.import_path / target['filename']
             file = str(target['filename'])
@@ -102,6 +108,13 @@ class DataMover:
             if result is not None:
                 print(f'File moved to {result}')
                 self.logger.debug(f'Success moving file {file} to the server. It will be imported.')
+                os.chmod(result, FILE_PERM)
+
+        for target in self.fileset_list:
+            src_fp = target
+            result = file_mover(src_fp, self.server_path)
+            if result is not None:
+                print(f'File moved to {result}')
                 os.chmod(result, FILE_PERM)
 
         # Move import.json

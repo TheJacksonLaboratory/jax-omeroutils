@@ -427,8 +427,7 @@ class ImportTarget:
         cli = CLI()
         cli.register('import', ImportControl, '_')
         cli.invoke(['import', '-f', str(self.path_to_target)])
-        print("trying some stuff:")
-        print(cli.out)
+        
         if cli.rv == 0:
             self.valid_target = True
         else:
