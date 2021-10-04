@@ -111,8 +111,10 @@ class DataMover:
                 os.chmod(result, FILE_PERM)
 
         for target in self.fileset_list:
+            print(target)
             src_fp = target
             result = file_mover(src_fp, self.server_path)
+            print("result:", result)
             if result is not None:
                 print(f'Auxiliary file moved to {result}')
                 os.chmod(result, FILE_PERM)
