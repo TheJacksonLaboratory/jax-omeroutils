@@ -30,11 +30,14 @@ def retrieve_fileset(stdoutval, target):
     lines = stdoutval.split('\n')
     print("first line:")
     print(lines[0])
-    files = [i for i in lines if not i.startswith('#')]
+    files = [i for i in lines if ((not i.startswith('#')) and (i != ''))]
     print("these are the files:")
     print(files)
     print("this is target:")
     print(target)
+    with open('filelist.txt', 'w') as f:
+        f.write(files)
+        f.close()
     return 
 
 
