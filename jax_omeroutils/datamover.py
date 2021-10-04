@@ -106,7 +106,7 @@ class DataMover:
             file = str(target['filename'])
             result = file_mover(src_fp, self.server_path)
             if result is not None:
-                print(f'File moved to {result}')
+                print(f'Main file moved to {result}')
                 self.logger.debug(f'Success moving file {file} to the server. It will be imported.')
                 os.chmod(result, FILE_PERM)
 
@@ -114,7 +114,7 @@ class DataMover:
             src_fp = target
             result = file_mover(src_fp, self.server_path)
             if result is not None:
-                print(f'File moved to {result}')
+                print(f'Auxiliary file moved to {result}')
                 os.chmod(result, FILE_PERM)
 
         # Move import.json
