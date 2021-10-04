@@ -77,8 +77,6 @@ def main(target, datauser, omerouser, logdir):
     json_path = retrieve_json(stdoutval)
     print("stdout move:",stdoutval)
     print("stderr move:",stderrval)
-    print(json_path)
-    print(pathlib.Path(json_path).exists())
     if json_path and pathlib.Path(json_path).exists():
         print(f'json path will be {json_path}')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
