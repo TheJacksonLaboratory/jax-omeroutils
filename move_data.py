@@ -25,4 +25,4 @@ if __name__ == "__main__":
                              ' to be transfered')
     args = parser.parse_args()
 
-    main(Path(args.import_batch_directory),Path(args.fileset_list))
+    main(Path(args.import_json),Path(args.fileset_list))
