@@ -8,6 +8,7 @@ import pathlib
 from datetime import datetime
 
 
+
 def demote(user_uid, user_gid, homedir):
     def result():
         os.setgid(user_gid)
@@ -32,10 +33,10 @@ def retrieve_fileset(stdoutval, target):
     print(lines[0])
     files = [i for i in lines if ((not i.startswith('#')) and (i != ''))]
     print("these are the files:")
-    print(files)
+    print("\n".join(files))
     print("this is target:")
     print(target)
-    with open('filelist.txt', 'w') as f:
+    with open(pathlib.Path(target / 'filelist.txt'), 'w') as f:
         f.write("\n".join(files))
         f.close()
     return 
