@@ -24,13 +24,18 @@ def retrieve_json(stdoutval):
     return json_path
 
 
-def retrieve_fileset(stdoutval):
+def retrieve_fileset(stdoutval, target):
     print("this is stdoutval that will need to be parsed:")
     print(stdoutval)
-    lines = stdoutval.split("\n")
+    lines = stdoutval.split('\n')
     print("first line:")
     print(lines[0])
-    return
+    files = [i for i in lines if not i.startswith('#')]
+    print("these are the files:")
+    print(files)
+    print("this is target:")
+    print(target)
+    return 
 
 
 def main(target, datauser, omerouser, logdir):
@@ -61,7 +66,7 @@ def main(target, datauser, omerouser, logdir):
     print("stdout prep:",stdoutval)
     print("stderr prep:",stderrval)
     json_path = retrieve_json(stdoutval)
-    fileset_list = retrieve_fileset(stdoutval)
+    fileset_list = retrieve_fileset(stdoutval, target)
 
     datamove = [sys.executable, curr_folder + '/move_data.py', json_path, fileset_list]
     process = subprocess.Popen(datamove,
