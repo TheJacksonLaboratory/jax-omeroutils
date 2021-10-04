@@ -34,9 +34,11 @@ def file_mover(file_path, destination_dir, tries=3):
     attempts result in mismatching md5 digests.
     """
     logger = logging.getLogger('intake')
+    print(file_path, destination_dir)
     file_path = Path(file_path)
     destination_dir = Path(destination_dir)
     if file_path.exists() and destination_dir.exists():
+        print("file exists and destination exists")
         for i in range(tries):
             shutil.copy(file_path, destination_dir)
             dest_file = destination_dir / file_path.name
