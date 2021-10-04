@@ -27,6 +27,9 @@ def retrieve_json(stdoutval):
 def retrieve_fileset(stdoutval):
     print("this is stdoutval that will need to be parsed:")
     print(stdoutval)
+    lines = stdoutval.split("\n")
+    print("first line:")
+    print(lines[0])
     return
 
 
