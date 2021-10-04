@@ -26,20 +26,13 @@ def retrieve_json(stdoutval):
 
 
 def retrieve_fileset(stdoutval, target):
-    print("this is stdoutval that will need to be parsed:")
-    print(stdoutval)
     lines = stdoutval.split('\n')
-    print("first line:")
-    print(lines[0])
     files = [i for i in lines if ((not i.startswith('#')) and (i != ''))]
-    print("these are the files:")
-    print("\n".join(files))
-    print("this is target:")
-    print(target)
-    with open(pathlib.Path(target) / 'filelist.txt', 'w') as f:
+    filelist_path = pathlib.Path(target) / 'filelist.txt'
+    with open(filelist_path, 'w') as f:
         f.write("\n".join(files))
         f.close()
-    return 
+    return filelist_path
 
 
 def main(target, datauser, omerouser, logdir):
