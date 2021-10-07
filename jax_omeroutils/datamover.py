@@ -113,6 +113,8 @@ class DataMover:
 
         for target in self.fileset_list:
             src_fp = target.strip()
+            #need to get the file subfolder structure here and
+            #append to server_path
             result = file_mover(src_fp, self.server_path)
             if result is not None:
                 print(f'Auxiliary file moved to {result}')
