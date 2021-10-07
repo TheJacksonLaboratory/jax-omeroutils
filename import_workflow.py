@@ -29,7 +29,7 @@ def retrieve_fileset(stdoutval, target):
     lines = stdoutval.split('\n')
     files = [i for i in lines if ((not i.startswith('#')) and (i != ''))]
     filelist_path = pathlib.Path(target) / 'moved_files.txt'
-    with open(filelist_path, 'w') as f:
+    with open(filelist_path, 'a') as f:
         f.write("\n".join(files))
         f.close()
     return filelist_path
