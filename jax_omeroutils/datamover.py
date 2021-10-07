@@ -77,7 +77,7 @@ class DataMover:
     """
 
     def __init__(self, import_json_path, fileset_list_path):
-        self.logger = logging.getLogger('intake')
+        self.logger = logging.getLogger('datamover')
         self.import_json_path = Path(import_json_path)
         self.fileset_list_path = Path(fileset_list_path)
 
@@ -121,3 +121,18 @@ class DataMover:
         result = file_mover(self.import_json_path, self.server_path)
         os.chmod(result, FILE_PERM)
         return f'Ready for import at:{result}'
+
+
+    def set_logging(self, log_directory, timestamp):
+        logfile = Path(self.import_path) / Path(f'{timestamp}.log')
+        server_logfile = Path(log_directory) / Path(f'{timestamp}.log')
+        self.logger.setLevel(logging.DEBUG)
+        fh = logging.FileHandler(logfile)
+        fh.setLevel(logging.DEBUG)
+        sh = logging.FileHandler(server_logfile)
+        sh.setLevel(logging.DEBUG)
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.DEBUG)
+        self.logger.addHandler(fh)
+        self.logger.addHandler(sh)
+        self.logger.addHandler(ch)

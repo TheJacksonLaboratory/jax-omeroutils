@@ -9,10 +9,8 @@ and is not suitable for handling, e.g., HCS plate imports.
 import logging
 import pathlib
 import json
-import io
 import pandas as pd
 from datetime import datetime
-from contextlib import redirect_stdout
 from importlib import import_module
 from ezomero import get_user_id
 from omero.cli import CLI
@@ -200,8 +198,7 @@ class ImportBatch:
         self.import_target_list = []  # List of ImportTarget objects
         self.logger = logging.getLogger('intake')
         
-    def set_logging(self, log_directory):
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    def set_logging(self, log_directory, timestamp):
         logfile = pathlib.Path(self.import_path) / pathlib.Path(f'{timestamp}.log')
         server_logfile = pathlib.Path(log_directory) / pathlib.Path(f'{timestamp}.log')
         self.logger.setLevel(logging.DEBUG)

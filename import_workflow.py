@@ -49,8 +49,11 @@ def main(target, datauser, omerouser, logdir):
 
     curr_folder = os.path.abspath(os.path.dirname(__file__))
 
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+
     # Run prepare_batch.py
-    prepbatch = [sys.executable, curr_folder + '/prepare_batch.py', target, logdir]
+    prepbatch = [sys.executable, curr_folder + '/prepare_batch.py', target, logdir, timestamp]
     process = subprocess.Popen(prepbatch,
                                preexec_fn=demote(data_user_uid,
                                                  data_user_gid,
@@ -64,7 +67,7 @@ def main(target, datauser, omerouser, logdir):
     print("stderr prep:",stderrval)
     fileset_list = retrieve_fileset(stdoutval, target)
 
-    datamove = [sys.executable, curr_folder + '/move_data.py', target, fileset_list]
+    datamove = [sys.executable, curr_folder + '/move_data.py', target, fileset_list, logdir, timestamp]
     process = subprocess.Popen(datamove,
                                preexec_fn=demote(data_user_uid,
                                                  data_user_gid,
@@ -79,7 +82,6 @@ def main(target, datauser, omerouser, logdir):
     print("stderr move:",stderrval)
     if json_path and pathlib.Path(json_path).exists():
         print(f'json path will be {json_path}')
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         out_path = pathlib.Path(json_path).parent / (timestamp + ".out")
         err_path = pathlib.Path(json_path).parent / (timestamp + ".err")
         with open(out_path, 'w+') as fp:
