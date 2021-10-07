@@ -106,11 +106,11 @@ class DataMover:
             result = file_mover(src_fp, self.server_path)
             if result is not None:
                 print(f'Main file moved to {result}')
-                self.logger.debug(f'Success moving file {file} to the server. It will be imported.')
+                self.logger.debug(f'Success moving file {file} to \
+                                  the server. It will be imported.')
                 os.chmod(result, FILE_PERM)
 
         for target in self.fileset_list:
-            
             src_fp = target.strip()
             result = file_mover(src_fp, self.server_path)
             if result is not None:
@@ -121,7 +121,6 @@ class DataMover:
         result = file_mover(self.import_json_path, self.server_path)
         os.chmod(result, FILE_PERM)
         return f'Ready for import at:{result}'
-
 
     def set_logging(self, log_directory, timestamp):
         logfile = Path(self.import_path) / Path(f'{timestamp}.log')

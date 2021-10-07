@@ -35,8 +35,6 @@ def main(import_batch_directory, log_directory, timestamp):
     batch.write_json()
     conn.close()
 
-    
-
 
 if __name__ == "__main__":
     description = 'Prepare a batch for OMERO import'
@@ -55,4 +53,5 @@ if __name__ == "__main__":
                         help='Timestamp for the log files')
     args = parser.parse_args()
 
-    main(Path(args.import_batch_directory),Path(args.log_directory), args.timestamp)
+    main(Path(args.import_batch_directory), Path(args.log_directory),
+         args.timestamp)

@@ -8,7 +8,6 @@ import pathlib
 from datetime import datetime
 
 
-
 def demote(user_uid, user_gid, homedir):
     def result():
         os.setgid(user_gid)
@@ -51,9 +50,9 @@ def main(target, datauser, omerouser, logdir):
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-
     # Run prepare_batch.py
-    prepbatch = [sys.executable, curr_folder + '/prepare_batch.py', target, logdir, '--timestamp', timestamp]
+    prepbatch = [sys.executable, curr_folder + '/prepare_batch.py',
+                 target, logdir, '--timestamp', timestamp]
     process = subprocess.Popen(prepbatch,
                                preexec_fn=demote(data_user_uid,
                                                  data_user_gid,
@@ -63,11 +62,12 @@ def main(target, datauser, omerouser, logdir):
                                )
     stdoutval, stderrval = process.communicate()
     stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
-    print("stdout prep:",stdoutval)
-    print("stderr prep:",stderrval)
+    print("stdout prep:", stdoutval)
+    print("stderr prep:", stderrval)
     fileset_list = retrieve_fileset(stdoutval, target)
 
-    datamove = [sys.executable, curr_folder + '/move_data.py', target, fileset_list, logdir, '--timestamp', timestamp]
+    datamove = [sys.executable, curr_folder + '/move_data.py',
+                target, fileset_list, logdir, '--timestamp', timestamp]
     process = subprocess.Popen(datamove,
                                preexec_fn=demote(data_user_uid,
                                                  data_user_gid,
@@ -78,8 +78,8 @@ def main(target, datauser, omerouser, logdir):
     stdoutval, stderrval = process.communicate()
     stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
     json_path = retrieve_json(stdoutval)
-    print("stdout move:",stdoutval)
-    print("stderr move:",stderrval)
+    print("stdout move:", stdoutval)
+    print("stderr move:", stderrval)
     if json_path and pathlib.Path(json_path).exists():
         print(f'json path will be {json_path}')
         out_path = pathlib.Path(json_path).parent / (timestamp + ".out")
@@ -92,23 +92,26 @@ def main(target, datauser, omerouser, logdir):
         fp.close()
 
         # Run import_annotate_batch.py
-        impbatch = [sys.executable, curr_folder + '/import_annotate_batch.py', json_path]
+        impbatch = [sys.executable, curr_folder + '/import_annotate_batch.py',
+                    json_path]
         process = subprocess.Popen(impbatch,
-                                preexec_fn=demote(omero_user_uid,
-                                                    omero_user_gid,
-                                                    omero_user_home),
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                   preexec_fn=demote(omero_user_uid,
+                                                     omero_user_gid,
+                                                     omero_user_home),
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
         stdoutval, stderrval = process.communicate()
-        stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
-        print("stdout import:",stdoutval)
-        print("stderr import:",stderrval)
+        stdoutval, stderrval = stdoutval.decode('UTF-8'), \
+            stderrval.decode('UTF-8')
+        print("stdout import:", stdoutval)
+        print("stderr import:", stderrval)
         with open(out_path, 'a') as fp:
             fp.write(stdoutval)
         fp.close()
         with open(err_path, 'a') as fp:
             fp.write(stderrval)
         fp.close()
+
 
 if __name__ == '__main__':
     description = "One-command in-place importing sript"

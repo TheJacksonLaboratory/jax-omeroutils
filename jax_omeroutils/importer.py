@@ -136,6 +136,7 @@ def multi_post_map_annotation(conn, object_type, object_ids, kv_dict, ns):
         o.linkAnnotation(map_ann)
     return map_ann.getId()
 
+
 # Class definitions
 class Importer:
     """Class for managing OMERO imports using OMERO CLI.
@@ -234,8 +235,8 @@ class Importer:
             return None
         else:
             map_ann_id = multi_post_map_annotation(self.conn, "Image",
-                                             self.image_ids, self.md,
-                                             CURRENT_MD_NS)
+                                                   self.image_ids, self.md,
+                                                   CURRENT_MD_NS)
             return map_ann_id
 
     def organize(self):
