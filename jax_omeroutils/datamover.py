@@ -38,6 +38,7 @@ def file_mover(file_path, destination_dir, tries=3):
     destination_dir = Path(destination_dir)
     if file_path.exists() and destination_dir.exists():
         for i in range(tries):
+            os.makedirs(os.path.dirname(destination_dir), exist_ok=True)
             shutil.copy(file_path, destination_dir)
             dest_file = destination_dir / file_path.name
             if calculate_md5(file_path) == calculate_md5(dest_file):
