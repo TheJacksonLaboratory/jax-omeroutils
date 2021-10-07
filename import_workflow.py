@@ -53,7 +53,7 @@ def main(target, datauser, omerouser, logdir):
 
 
     # Run prepare_batch.py
-    prepbatch = [sys.executable, curr_folder + '/prepare_batch.py', target, logdir, timestamp]
+    prepbatch = [sys.executable, curr_folder + '/prepare_batch.py', target, logdir, '--timestamp', timestamp]
     process = subprocess.Popen(prepbatch,
                                preexec_fn=demote(data_user_uid,
                                                  data_user_gid,
@@ -67,7 +67,7 @@ def main(target, datauser, omerouser, logdir):
     print("stderr prep:",stderrval)
     fileset_list = retrieve_fileset(stdoutval, target)
 
-    datamove = [sys.executable, curr_folder + '/move_data.py', target, fileset_list, logdir, timestamp]
+    datamove = [sys.executable, curr_folder + '/move_data.py', target, fileset_list, logdir, '--timestamp', timestamp]
     process = subprocess.Popen(datamove,
                                preexec_fn=demote(data_user_uid,
                                                  data_user_gid,
