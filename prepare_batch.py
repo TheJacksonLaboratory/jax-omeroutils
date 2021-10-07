@@ -48,7 +48,7 @@ if __name__ == "__main__":
     parser.add_argument('log_directory',
                         type=str,
                         help='Directory for the log files')
-    parser.add_argument('timestamp',
+    parser.add_argument('--timestamp',
                         type=str,
                         required=False,
                         default=datetime.now().strftime('%Y%m%d_%H%M%S'),
