@@ -123,8 +123,9 @@ class DataMover:
                 os.chmod(result, FILE_PERM)
 
         for target in self.fileset_list:
-            src_fp = Path(target.strip())
+            src_fp = target.strip()
             subfolder_file = src_fp.split(str(self.import_path))[-1]
+            src_fp = Path(src_fp)
             print(subfolder_file)
             subfolder = subfolder_file.rsplit('/',1)
             print(subfolder, self.server_path)
