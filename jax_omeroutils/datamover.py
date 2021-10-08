@@ -121,7 +121,7 @@ class DataMover:
 
         for target in self.fileset_list:
             src_fp = target.strip()
-            subfolder_file = target.strip(self.import_path)[-1]
+            subfolder_file = target.split(self.import_path)[-1]
             print(subfolder_file)
             subfolder = subfolder_file.rsplit('/',1)
             print(subfolder)
