@@ -128,11 +128,10 @@ class DataMover:
             src_fp = Path(src_fp)
             print(subfolder_file)
             subfolder = subfolder_file.rsplit('/',1)
-            subfolder = subfolder.lstrip('/')
             print("subfolder and server path:",subfolder, str(self.server_path))
             if len(subfolder) > 1:
                 print('subfolder >1')
-                subfolder_path = self.server_path / subfolder[0]
+                subfolder_path = self.server_path / subfolder[0].lstrip('/')
                 print(subfolder_path)
             else:
                 print('subfolder =1')
