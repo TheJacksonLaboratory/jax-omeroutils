@@ -40,6 +40,7 @@ def file_mover(file_path, destination_dir, tries=3):
     if file_path.exists():
         for i in range(tries):
             os.makedirs(os.path.dirname(destination_dir), exist_ok=True)
+            os.chmod(destination_dir, DIR_PERM)
             if destination_dir.exists():
                 print("about to copy:")
                 shutil.copy(file_path, destination_dir)
@@ -128,7 +129,7 @@ class DataMover:
             subfolder_file = src_fp.split(str(self.import_path))[-1]
             print(subfolder_file)
             subfolder = subfolder_file.rsplit('/',1)
-            print(subfolder)
+            print(subfolder, self.server_path)
             if len(subfolder) > 1:
                 subfolder_path = self.server_path / subfolder[0]
             else:
