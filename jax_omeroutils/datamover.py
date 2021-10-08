@@ -104,7 +104,7 @@ class DataMover:
         for target in self.import_targets:
             src_fp = self.import_path / target['filename']
             print(target['filename'],type(target['filename']))
-            subfolder = target['filename'].rstrip('/',1)
+            subfolder = target['filename'].rsplit('/',1)
             print(subfolder)
             if len(subfolder) > 1:
                 subfolder_path = self.server_path / subfolder[0]
@@ -123,7 +123,7 @@ class DataMover:
             src_fp = target.strip()
             subfolder_file = target.strip(self.import_path)[-1]
             print(subfolder_file)
-            subfolder = subfolder_file.rstrip('/',1)
+            subfolder = subfolder_file.rsplit('/',1)
             print(subfolder)
             if len(subfolder) > 1:
                 subfolder_path = self.server_path / subfolder[0]
