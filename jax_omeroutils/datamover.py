@@ -40,16 +40,19 @@ def file_mover(file_path, destination_dir, tries=3):
     if file_path.exists():
         for i in range(tries):
             os.makedirs(os.path.dirname(destination_dir), exist_ok=True)
-            shutil.copy(file_path, destination_dir)
-            dest_file = destination_dir / file_path.name
-            if calculate_md5(file_path) == calculate_md5(dest_file):
-                os.remove(file_path)
-                return str(dest_file)
-            else:
-                fp = str(file_path)
-                err = f"checksum failed after copy attempt {i + 1} for {fp}"
-                logger.error(err)
-                os.remove(dest_file)
+            if destination_dir.exists():
+                print("about to copy:")
+                shutil.copy(file_path, destination_dir)
+                dest_file = destination_dir / file_path.name
+                print("dest exists?", dest_file.exists())
+                if calculate_md5(file_path) == calculate_md5(dest_file):
+                    os.remove(file_path)
+                    return str(dest_file)
+                else:
+                    fp = str(file_path)
+                    err = f"checksum failed after copy attempt {i + 1} for {fp}"
+                    logger.error(err)
+                    os.remove(dest_file)
     logger.error(f"Unable to copy {str(file_path)}")
     return None
 
