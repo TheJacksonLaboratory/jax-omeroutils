@@ -35,7 +35,7 @@ def file_mover(file_path, destination_dir, tries=3):
     """
     logger = logging.getLogger('intake')
     file_path = Path(file_path)
-    destination_dir = Path(destination_dir)
+    destination_dir = Path(destination_dir+'/')
     print("file mover:", str(file_path), str(destination_dir))
     if file_path.exists():
         for i in range(tries):
