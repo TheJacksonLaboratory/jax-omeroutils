@@ -34,16 +34,13 @@ def file_mover(file_path, destination_dir, tries=3):
     attempts result in mismatching md5 digests.
     """
     logger = logging.getLogger('intake')
-    print("file mover:", str(file_path), str(destination_dir))
     ersatz_file = destination_dir / 'test.tiff'
     if file_path.exists():
         for i in range(tries):
             os.makedirs(os.path.dirname(ersatz_file), mode=DIR_PERM, exist_ok=True)
             if destination_dir.exists():
-                print("about to copy:")
                 shutil.copy(file_path, destination_dir)
                 dest_file = destination_dir / file_path.name
-                print("dest exists?", dest_file.exists())
                 if calculate_md5(file_path) == calculate_md5(dest_file):
                     os.remove(file_path)
                     return str(dest_file)
@@ -106,14 +103,11 @@ class DataMover:
         # Move import targets first
         for target in self.import_targets:
             src_fp = self.import_path / target['filename']
-            print(target['filename'],type(target['filename']))
             subfolder = target['filename'].rsplit('/',1)
-            print(subfolder)
             if len(subfolder) > 1:
                 subfolder_path = self.server_path / subfolder[0]
             else:
                 subfolder_path = self.server_path
-            print(subfolder_path)
             file = str(target['filename'])
             result = file_mover(src_fp, subfolder_path)
             if result is not None:
@@ -126,20 +120,15 @@ class DataMover:
             src_fp = target.strip()
             subfolder_file = src_fp.split(str(self.import_path))[-1]
             src_fp = Path(src_fp)
-            print(subfolder_file)
             subfolder = subfolder_file.rsplit('/',1)
-            print("subfolder and server path:",subfolder, str(self.server_path))
             if len(subfolder) > 1:
                 print('subfolder >1')
                 subfolder_path = self.server_path / subfolder[0].lstrip('/')
-                print(subfolder_path)
             else:
                 print('subfolder =1')
                 subfolder_path = self.server_path
-                print(subfolder_path)
             #need to get the file subfolder structure here and
             #append to server_path
-            print(subfolder_path)
             result = file_mover(src_fp, subfolder_path)
             if result is not None:
                 print(f'Auxiliary file moved to {result}')
