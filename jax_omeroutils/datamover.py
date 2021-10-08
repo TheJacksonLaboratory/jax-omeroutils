@@ -103,7 +103,7 @@ class DataMover:
         # Move import targets first
         for target in self.import_targets:
             src_fp = self.import_path / target['filename']
-            print(target['filename'])
+            print(target['filename'],type(target['filename']))
             subfolder = target['filename'].rstrip('/',1)
             print(subfolder)
             if len(subfolder) > 1:
