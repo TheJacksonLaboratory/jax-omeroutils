@@ -40,8 +40,8 @@ def file_mover(file_path, destination_dir, tries=3):
     if file_path.exists():
         for i in range(tries):
             os.makedirs(os.path.dirname(destination_dir), exist_ok=True)
-            os.chmod(destination_dir, DIR_PERM)
             if destination_dir.exists():
+                os.chmod(destination_dir, DIR_PERM)
                 print("about to copy:")
                 shutil.copy(file_path, destination_dir)
                 dest_file = destination_dir / file_path.name
