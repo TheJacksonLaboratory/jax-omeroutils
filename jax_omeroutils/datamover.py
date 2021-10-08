@@ -34,14 +34,12 @@ def file_mover(file_path, destination_dir, tries=3):
     attempts result in mismatching md5 digests.
     """
     logger = logging.getLogger('intake')
-    file_path = Path(file_path)
-    destination_dir = Path(destination_dir+'/')
     print("file mover:", str(file_path), str(destination_dir))
+    ersatz_file = destination_dir / 'test.tiff'
     if file_path.exists():
         for i in range(tries):
-            os.makedirs(os.path.dirname(destination_dir), exist_ok=True)
+            os.makedirs(os.path.dirname(ersatz_file), mode=DIR_PERM, exist_ok=True)
             if destination_dir.exists():
-                os.chmod(destination_dir, DIR_PERM)
                 print("about to copy:")
                 shutil.copy(file_path, destination_dir)
                 dest_file = destination_dir / file_path.name
