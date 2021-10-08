@@ -107,7 +107,7 @@ class DataMover:
             result = file_mover(src_fp, self.server_path)
             if result is not None:
                 print(f'Main file moved to {result}')
-                self.logger.debug(f'Success moving file {file} to ',
+                self.logger.debug(f'Success moving file {file} to '+
                                   f'the server. It will be imported.')
                 os.chmod(result, FILE_PERM)
 
