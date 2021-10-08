@@ -103,11 +103,14 @@ class DataMover:
         # Move import targets first
         for target in self.import_targets:
             src_fp = self.import_path / target['filename']
+            print(target['filename'])
             subfolder = target['filename'].rstrip('/',1)
+            print(subfolder)
             if len(subfolder) > 1:
                 subfolder_path = self.server_path / subfolder[0]
             else:
                 subfolder_path = self.server_path
+            print(subfolder_path)
             file = str(target['filename'])
             result = file_mover(src_fp, subfolder_path)
             if result is not None:
@@ -119,13 +122,16 @@ class DataMover:
         for target in self.fileset_list:
             src_fp = target.strip()
             subfolder_file = target.strip(self.import_path)[-1]
+            print(subfolder_file)
             subfolder = subfolder_file.rstrip('/',1)
+            print(subfolder)
             if len(subfolder) > 1:
                 subfolder_path = self.server_path / subfolder[0]
             else:
                 subfolder_path = self.server_path
             #need to get the file subfolder structure here and
             #append to server_path
+            print(subfolder_path)
             result = file_mover(src_fp, subfolder_path)
             if result is not None:
                 print(f'Auxiliary file moved to {result}')
