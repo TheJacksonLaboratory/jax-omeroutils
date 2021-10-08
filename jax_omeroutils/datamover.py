@@ -36,7 +36,8 @@ def file_mover(file_path, destination_dir, tries=3):
     logger = logging.getLogger('intake')
     file_path = Path(file_path)
     destination_dir = Path(destination_dir)
-    if file_path.exists() and destination_dir.exists():
+    print("file mover:", str(file_path), str(destination_dir))
+    if file_path.exists():
         for i in range(tries):
             os.makedirs(os.path.dirname(destination_dir), exist_ok=True)
             shutil.copy(file_path, destination_dir)
@@ -121,7 +122,7 @@ class DataMover:
 
         for target in self.fileset_list:
             src_fp = target.strip()
-            subfolder_file = target.split(str(self.import_path))[-1]
+            subfolder_file = src_fp.split(str(self.import_path))[-1]
             print(subfolder_file)
             subfolder = subfolder_file.rsplit('/',1)
             print(subfolder)
