@@ -39,7 +39,7 @@ cd "$(dirname "$0")"
 
 arguments="$*"
 # check for folders last modified more than 60 mins ago
-for dir in $(sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin +60); do 
+for dir in "$(sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin +60)"; do 
 
     skip=false
     if [ "$exclude" ]; then
@@ -73,7 +73,7 @@ for dir in $(sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin 
         if [ $allfiles -eq $nonimages ]; then
             empty=true
         fi
-        logfile=$(sudo -u $user find "$dir" -mindepth 1 -maxdepth 1 -regex ".*\.\(log\)" -type f -mmin -10)
+        logfile="$(sudo -u $user find "$dir" -mindepth 1 -maxdepth 1 -regex ".*\.\(log\)" -type f -mmin -10)"
         empty_msg=""
         # add message for empty folder
         if [ "$empty" = true ]; then
@@ -90,8 +90,8 @@ for dir in $(sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin 
         # send email if necessary
         if [ "$email" = true ] && sudo -u $user [ -f "$logfile" ]; then
             #retrieve email of user by splitting dir name on underscore
-            address=$(basename "$dir" | cut -f1 -d_)"@jax.org"
-            address_owner=$(find "$dir" -maxdepth 0 -printf '%u\n')"@jax.org"
+            address="$(basename "$dir" | cut -f1 -d_)""@jax.org"
+            address_owner="$(find "$dir" -maxdepth 0 -printf '%u\n')""@jax.org"
             echo "Sending email to user $address"
             email_dir=$(basename "$dir")
             if [ $address_owner != $address ]; then
