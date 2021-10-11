@@ -136,6 +136,11 @@ class DataMover:
         result = file_mover(self.import_json_path, self.server_path)
         if result:
             os.chmod(result, FILE_PERM)
+        else: 
+            for line in self.fileset_list:
+                line.rstrip('\n')
+                if line.endswith('import.json'):
+                    result = line
         return f'Ready for import at:{result}'
 
     def set_logging(self, log_directory, timestamp):
