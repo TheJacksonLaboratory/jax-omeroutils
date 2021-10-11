@@ -39,7 +39,7 @@ cd "$(dirname "$0")"
 
 arguments="$*"
 # check for folders last modified more than 60 mins ago
-for dir in "$(sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin +60)"; do 
+sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin +60 | while read dir; do 
 
     skip=false
     if [ "$exclude" ]; then
