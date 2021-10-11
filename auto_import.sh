@@ -101,7 +101,7 @@ sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin +60 | while r
                                 echo "From: noreply-omero-importer@jax.org" && \
                                 echo "Subject: omero import log for folder $email_dir" && \
                                 echo "" && \
-                                sudo -u $user cat $logfile && \
+                                sudo -u $user cat "$logfile" && \
                                 echo "$empty_msg"
                                 ) > "$HOME"/temp_email_owner.txt
                 ssmtp $address_owner < "$HOME"/temp_email_owner.txt

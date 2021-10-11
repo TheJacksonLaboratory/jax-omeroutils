@@ -122,10 +122,8 @@ class DataMover:
             src_fp = Path(src_fp)
             subfolder = subfolder_file.rsplit('/',1)
             if len(subfolder) > 1:
-                print('subfolder >1')
                 subfolder_path = self.server_path / subfolder[0].lstrip('/')
             else:
-                print('subfolder =1')
                 subfolder_path = self.server_path
             #need to get the file subfolder structure here and
             #append to server_path
@@ -136,7 +134,8 @@ class DataMover:
 
         # Move import.json
         result = file_mover(self.import_json_path, self.server_path)
-        os.chmod(result, FILE_PERM)
+        if result:
+            os.chmod(result, FILE_PERM)
         return f'Ready for import at:{result}'
 
     def set_logging(self, log_directory, timestamp):
