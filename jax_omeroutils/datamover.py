@@ -120,7 +120,6 @@ class DataMover:
             src_fp = target.strip()
             subfolder_file = src_fp.split(str(self.import_path))[-1]
             src_fp = Path(src_fp)
-            print(src_fp.suffix)
             if src_fp.suffix == '.log' or src_fp.suffix == '.xlsx':
                 continue
             subfolder = subfolder_file.rsplit('/',1)
@@ -142,6 +141,7 @@ class DataMover:
         else: 
             for line in self.fileset_list:
                 line.rstrip('\n')
+                print(line, "is it import.json?", line.endswith('import.json'))
                 if line.endswith('import.json'):
                     result = line
         return f'Ready for import at:{result}'
