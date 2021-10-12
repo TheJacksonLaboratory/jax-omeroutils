@@ -140,7 +140,7 @@ class DataMover:
             os.chmod(result, FILE_PERM)
         else: 
             for line in self.fileset_list:
-                line.rstrip()
+                line = line.rstrip()
                 print(line, "is it import.json?", line.endswith('import.json'))
                 if line.endswith('import.json'):
                     result = line
