@@ -120,12 +120,12 @@ class DataMover:
             src_fp = target.strip()
             subfolder_file = src_fp.split(str(self.import_path))[-1]
             src_fp = Path(src_fp)
+            if src_fp.suffix == '.log':
+                continue
             subfolder = subfolder_file.rsplit('/',1)
             if len(subfolder) > 1:
                 subfolder_path = self.server_path / subfolder[0].lstrip('/')
             else:
-                if src_fp.suffix == '.log':
-                    continue
                 subfolder_path = self.server_path
             #need to get the file subfolder structure here and
             #append to server_path
