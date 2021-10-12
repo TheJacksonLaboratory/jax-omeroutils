@@ -120,7 +120,8 @@ class DataMover:
             src_fp = target.strip()
             subfolder_file = src_fp.split(str(self.import_path))[-1]
             src_fp = Path(src_fp)
-            if src_fp.suffix == '.log':
+            print(src_fp.suffix)
+            if src_fp.suffix == '.log' or src_fp.suffix == '.xlsx':
                 continue
             subfolder = subfolder_file.rsplit('/',1)
             if len(subfolder) > 1:
