@@ -139,11 +139,7 @@ class DataMover:
         if result:
             os.chmod(result, FILE_PERM)
         else: 
-            for line in self.fileset_list:
-                line = line.rstrip()
-                print(line, "is it import.json?", line.endswith('import.json'))
-                if line.endswith('import.json'):
-                    result = line
+            result = self.server_path / 'import.json'
         return f'Ready for import at:{result}'
 
     def set_logging(self, log_directory, timestamp):
