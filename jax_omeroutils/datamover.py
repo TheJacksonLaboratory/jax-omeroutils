@@ -124,6 +124,8 @@ class DataMover:
             if len(subfolder) > 1:
                 subfolder_path = self.server_path / subfolder[0].lstrip('/')
             else:
+                if src_fp.suffix == '.log':
+                    continue
                 subfolder_path = self.server_path
             #need to get the file subfolder structure here and
             #append to server_path
