@@ -30,7 +30,7 @@ def main(import_md):
                           port=OMERO_PORT,
                           secure=True)
     suconn.connect()
-    conn = suconn.suConn(import_user, import_group, 21600000)
+    conn = suconn.suConn(import_user, import_group, 2160000000)
     suconn.close()
 
     # Import targets from import.json
