@@ -127,8 +127,12 @@ def load_md_from_file(md_filepath, sheet_name=0):
     # fixing rogue lines, rogue columns, rogue leading/trailing spaces
     # in any string column
     md = md.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-    md = md.dropna(subset=['filename', 'project', 'dataset'])\
-           .dropna(axis='columns', how='all')
+    if md['project']:
+        md = md.dropna(subset=['filename', 'project', 'dataset'])\
+             .dropna(axis='columns', how='all')
+    elif md['screen']:
+        md = md.dropna(subset=['filename', 'screen'])\
+             .dropna(axis='columns', how='all')
 
     # protect against extra spaces on 'omero user' and 'omero group'
     md_header.index = md_header.index.str.strip()
@@ -294,6 +298,7 @@ class ImportBatch:
 
         This function will do the following checks:
          - Do the columns 'filename', 'project', and 'dataset' exist?
+         - If we don't have 'project' and dataset', do we have 'screen'?
          - Are there any fields in the above columns with missing data?
          - Are there any duplicate filenames in the metadata?
 
@@ -320,10 +325,18 @@ class ImportBatch:
                 return False
 
             if 'dataset' not in filemd.keys():
-                self.logger.error('Column \'dataset\' is missing in '+
-                                  'your spreadsheet!')
-                self.valid_md = False
-                return False
+                if 'screen' not in filemd.keys():
+                    self.logger.error('You need either a \'dataset\' or a \'screen\''+
+                                  ' column in your spreadsheet!')
+                    self.valid_md = False
+                    return False
+                elif (str(filemd['screen']) == '' or
+                      str(filemd['screen']) == 'nan'):
+                    self.logger.error('You have an empty screen name in '+
+                                  'your spreadsheet. Please double-check!')
+                    self.valid_md = False
+                    return False
+
             elif (str(filemd['dataset']) == '' or
                   str(filemd['dataset']) == 'nan'):
                 self.logger.error('You have an empty dataset name in '+
@@ -332,10 +345,17 @@ class ImportBatch:
                 return False
 
             if 'project' not in filemd.keys():
-                self.logger.error('Column \'project\' is missing in '+
-                                  'your spreadsheet!')
-                self.valid_md = False
-                return False
+                if 'screen' not in filemd.keys():
+                    self.logger.error('You need either a \'project\' or a \'screen\''+
+                                  ' column in your spreadsheet!')
+                    self.valid_md = False
+                    return False
+                elif (str(filemd['screen']) == '' or
+                      str(filemd['screen']) == 'nan'):
+                    self.logger.error('You have an empty screen name in '+
+                                  'your spreadsheet. Please double-check!')
+                    self.valid_md = False
+                    return False
             elif (str(filemd['project']) == '' or
                   str(filemd['project']) == 'nan'):
                 self.logger.error('You have an empty project name in '+

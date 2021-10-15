@@ -14,7 +14,8 @@ from omero.cli import CLI
 from omero.plugins.sessions import SessionsControl
 from omero.rtypes import rstring
 from omero.sys import Parameters
-from omero.gateway import MapAnnotationWrapper
+from omero.gateway import MapAnnotationWrapper, ScreenWrapper
+from omero.model import ScreenI, ScreenPlateLinkI
 from pathlib import Path
 ImportControl = import_module("omero.plugins.import").ImportControl
 
@@ -78,6 +79,40 @@ def set_or_create_dataset(conn, project_id, dataset_name):
     else:
         dataset_id = ds[0].getId()
     return dataset_id
+
+
+def post_screen(conn, screen_name):
+    screen = ScreenWrapper(conn, ScreenI())
+    screen.setName(screen_name)
+    screen.save()
+    screen_id = screen.getId()
+    return screen_id
+
+
+def set_or_create_screen(conn, screen_name):
+    """Create a new Screen unless one already exists with that name.
+
+    Parameter
+    ---------
+    conn : ``omero.gateway.BlitzGateway`` object.
+        OMERO connection.
+    screen_name : str
+        The name of the Screen needed. If there is no Screen with a matching
+        name in the group specified in ``conn``, a new Screen will be created.
+
+    Returns
+    -------
+    screen_id : int
+        The id of the Project that was either found or created.
+    """
+    ss = conn.getObjects('Screen', attributes={'name': screen_name})
+    ss = list(ss)
+    if len(ss) == 0:
+        screen_id = post_screen(conn, screen_name)
+        print(f'Created new Project:{screen_id}')
+    else:
+        screen_id = ss[0].getId()
+    return screen_id
 
 
 def multi_post_map_annotation(conn, object_type, object_ids, kv_dict, ns):
@@ -184,8 +219,12 @@ class Importer:
         self.md = import_md
         self.session_uuid = conn.getSession().getUuid().val
         self.filename = self.md.pop('filename')
-        self.project = self.md.pop('project')
-        self.dataset = self.md.pop('dataset')
+        if self.md.pop('project'):
+            self.project = self.md.pop('project')
+        if self.md.pop('dataset'):
+            self.dataset = self.md.pop('dataset')
+        if self.md.pop('screen'):
+            self.screen = self.md.pop('screen')
         self.imported = False
         self.image_ids = None
 
@@ -207,6 +246,8 @@ class Importer:
             logging.error(f'File {self.file_path} has not been imported')
             return None
         else:
+
+            # THIS IS WHERE I CHECK WHETHER ITS IMAGES OR PLATES AND GET IDS ACCORDINGLY
             q = self.conn.getQueryService()
             params = Parameters()
             path_query = str(self.file_path).strip('/')
@@ -234,6 +275,7 @@ class Importer:
             logging.error('No image ids to annotate')
             return None
         else:
+            # CHECK IF PLATE, AND IF SO ONLY ANNOTATE PLATE
             map_ann_id = multi_post_map_annotation(self.conn, "Image",
                                                    self.image_ids, self.md,
                                                    CURRENT_MD_NS)
@@ -247,6 +289,7 @@ class Importer:
         image_moved : boolean
             True if images were found and moved, else False.
         """
+        #CHECK IF PLATE, MOVE TO SCREEN INSTEAD
         if len(self.image_ids) == 0:
             logging.error('No image ids to organize')
             return False
