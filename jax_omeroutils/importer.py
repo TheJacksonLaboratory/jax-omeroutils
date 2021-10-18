@@ -9,13 +9,13 @@ intake (using the intake.py module).
 import logging
 from ezomero import post_dataset, post_project
 from ezomero import get_image_ids, link_images_to_dataset
+from ezomero import post_screen, link_plates_to_screen
 from importlib import import_module
 from omero.cli import CLI
 from omero.plugins.sessions import SessionsControl
 from omero.rtypes import rstring
 from omero.sys import Parameters
-from omero.gateway import MapAnnotationWrapper, ScreenWrapper
-from omero.model import ScreenI, ScreenPlateLinkI
+from omero.gateway import MapAnnotationWrapper
 from pathlib import Path
 ImportControl = import_module("omero.plugins.import").ImportControl
 
@@ -81,14 +81,6 @@ def set_or_create_dataset(conn, project_id, dataset_name):
     return dataset_id
 
 
-def post_screen(conn, screen_name):
-    screen = ScreenWrapper(conn, ScreenI())
-    screen.setName(screen_name)
-    screen.save()
-    screen_id = screen.getId()
-    return screen_id
-
-
 def set_or_create_screen(conn, screen_name):
     """Create a new Screen unless one already exists with that name.
 
@@ -109,7 +101,7 @@ def set_or_create_screen(conn, screen_name):
     ss = list(ss)
     if len(ss) == 0:
         screen_id = post_screen(conn, screen_name)
-        print(f'Created new Project:{screen_id}')
+        print(f'Created new Screen:{screen_id}')
     else:
         screen_id = ss[0].getId()
     return screen_id
@@ -221,12 +213,19 @@ class Importer:
         self.filename = self.md.pop('filename')
         if self.md.pop('project'):
             self.project = self.md.pop('project')
+        else:
+            self.project = None
         if self.md.pop('dataset'):
             self.dataset = self.md.pop('dataset')
+        else:
+            self.dataset = None
         if self.md.pop('screen'):
             self.screen = self.md.pop('screen')
+        else:
+            self.screen = None
         self.imported = False
         self.image_ids = None
+        self.plate_ids = None
 
     def get_image_ids(self):
         """Get the Ids of imported images.
@@ -246,8 +245,6 @@ class Importer:
             logging.error(f'File {self.file_path} has not been imported')
             return None
         else:
-
-            # THIS IS WHERE I CHECK WHETHER ITS IMAGES OR PLATES AND GET IDS ACCORDINGLY
             q = self.conn.getQueryService()
             params = Parameters()
             path_query = str(self.file_path).strip('/')
@@ -262,8 +259,41 @@ class Importer:
                 )
             self.image_ids = [r[0].val for r in results]
             return self.image_ids
+    
+    def get_plate_ids(self):
+        """Get the Ids of imported plates.
 
-    def annotate(self):
+        Note that this will not find plates if they have not been imported.
+        Also, while plate_ids are returned, this method also sets
+        ``self.plate_ids``.
+
+        Returns
+        -------
+        plate_ids : list of ints
+            Ids of plates imported from the specified client path, which
+            itself is derived from ``self.file_path`` and ``self.filename``.
+
+        """
+        if self.imported is not True:
+            logging.error(f'File {self.file_path} has not been imported')
+            return None
+        else:
+            q = self.conn.getQueryService()
+            params = Parameters()
+            path_query = str(self.file_path).strip('/')
+            params.map = {"cpath": rstring(path_query)}
+            results = q.projection(
+                "SELECT p.id FROM Plate p"
+                " JOIN p.fileset fs"
+                " JOIN fs.usedFiles u"
+                " WHERE u.clientPath=:cpath",
+                params,
+                self.conn.SERVICE_OPTS
+                )
+            self.plate_ids = [r[0].val for r in results]
+            return self.plate_ids
+
+    def annotate_images(self):
         """Post map annotation (``self.md``) to images ``self.image_ids``.
 
         Returns
@@ -281,7 +311,7 @@ class Importer:
                                                    CURRENT_MD_NS)
             return map_ann_id
 
-    def organize(self):
+    def organize_images(self):
         """Move images to ``self.project``/``self.dataset``.
 
         Returns

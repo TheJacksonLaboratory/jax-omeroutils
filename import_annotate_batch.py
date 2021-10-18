@@ -40,9 +40,14 @@ def main(import_md):
         print(f'Preparing to import {str(file_path)}')
         imp_ctl = Importer(conn, file_path, md)
         imp_ctl.import_ln_s(OMERO_HOST, OMERO_PORT)
-        imp_ctl.get_image_ids()
-        imp_ctl.organize()
-        imp_ctl.annotate()
+        if imp_ctl.screen:
+            imp_ctl.get_plate_ids()
+            imp_ctl.organize_plates()
+            imp_ctl.annotate_plates()
+        else:
+            imp_ctl.get_image_ids()
+            imp_ctl.organize_images()
+            imp_ctl.annotate_images()
 
     conn.close()
     return
