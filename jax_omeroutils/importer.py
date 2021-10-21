@@ -305,9 +305,25 @@ class Importer:
             logging.error('No image ids to annotate')
             return None
         else:
-            # CHECK IF PLATE, AND IF SO ONLY ANNOTATE PLATE
             map_ann_id = multi_post_map_annotation(self.conn, "Image",
                                                    self.image_ids, self.md,
+                                                   CURRENT_MD_NS)
+            return map_ann_id
+
+    def annotate_plates(self):
+        """Post map annotation (``self.md``) to plates ``self.plate_ids``.
+
+        Returns
+        -------
+        map_ann_id : int
+            The Id of the MapAnnotation that was created.
+        """
+        if len(self.plate_ids) == 0:
+            logging.error('No plate ids to annotate')
+            return None
+        else:
+            map_ann_id = multi_post_map_annotation(self.conn, "Plate",
+                                                   self.plate_ids, self.md,
                                                    CURRENT_MD_NS)
             return map_ann_id
 
@@ -319,7 +335,6 @@ class Importer:
         image_moved : boolean
             True if images were found and moved, else False.
         """
-        #CHECK IF PLATE, MOVE TO SCREEN INSTEAD
         if len(self.image_ids) == 0:
             logging.error('No image ids to organize')
             return False
@@ -334,6 +349,23 @@ class Importer:
                                                    self.dataset)
                 link_images_to_dataset(self.conn, [im_id], dataset_id)
                 print(f'Moved Image:{im_id} to Dataset:{dataset_id}')
+        return True
+
+    def organize_plates(self):
+        """Move plates to ``self.screen``.
+
+        Returns
+        -------
+        plate_moved : boolean
+            True if plates were found and moved, else False.
+        """
+        if len(self.plate_ids) == 0:
+            logging.error('No plate ids to organize')
+            return False
+        for pl_id in self.plate_ids:
+            screen_id = set_or_create_screen(self.conn, self.screen)
+            link_plates_to_screen(self.conn, [pl_id], screen_id)
+            print(f'Moved Plate:{pl_id} to Screen:{screen_id}')
         return True
 
     def import_ln_s(self, host, port):
