@@ -127,10 +127,10 @@ def load_md_from_file(md_filepath, sheet_name=0):
     # fixing rogue lines, rogue columns, rogue leading/trailing spaces
     # in any string column
     md = md.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-    if md['project']:
+    if 'project' in md.columns:
         md = md.dropna(subset=['filename', 'project', 'dataset'])\
              .dropna(axis='columns', how='all')
-    elif md['screen']:
+    elif 'screen' in md.columns:
         md = md.dropna(subset=['filename', 'screen'])\
              .dropna(axis='columns', how='all')
 

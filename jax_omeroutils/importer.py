@@ -211,15 +211,15 @@ class Importer:
         self.md = import_md
         self.session_uuid = conn.getSession().getUuid().val
         self.filename = self.md.pop('filename')
-        if self.md.pop('project'):
+        if 'project' in self.md.columns:
             self.project = self.md.pop('project')
         else:
             self.project = None
-        if self.md.pop('dataset'):
+        if 'dataset' in self.md.columns:
             self.dataset = self.md.pop('dataset')
         else:
             self.dataset = None
-        if self.md.pop('screen'):
+        if 'screen' in self.md.columns:
             self.screen = self.md.pop('screen')
         else:
             self.screen = None
