@@ -284,7 +284,10 @@ class Importer:
             params.map = {"cpath": rstring(path_query)}
             results = q.projection(
                 "SELECT p.id FROM Plate p"
-                " JOIN p.fileset fs"
+                " JOIN p.plateAcquisitions pa"
+                " JOIN pa.wellSample ws"
+                " JOIN ws.image i"
+                " JOIN i.fileset fs"
                 " JOIN fs.usedFiles u"
                 " WHERE u.clientPath=:cpath",
                 params,
