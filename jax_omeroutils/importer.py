@@ -283,7 +283,7 @@ class Importer:
             path_query = str(self.file_path).strip('/')
             params.map = {"cpath": rstring(path_query)}
             results = q.projection(
-                "SELECT p.id FROM Plate p"
+                "SELECT DISTINCT p.id FROM Plate p"
                 " JOIN p.plateAcquisitions pa"
                 " JOIN pa.wellSample ws"
                 " JOIN ws.image i"
