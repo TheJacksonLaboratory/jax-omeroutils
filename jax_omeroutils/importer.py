@@ -278,10 +278,14 @@ class Importer:
             logging.error(f'File {self.file_path} has not been imported')
             return None
         else:
+            print("time to get some IDs")
             q = self.conn.getQueryService()
+            print(q)
             params = Parameters()
             path_query = str(self.file_path).strip('/')
+            print(f"path query: f{path_query}")
             params.map = {"cpath": rstring(path_query)}
+            print(params)
             results = q.projection(
                 "SELECT DISTINCT p.id FROM Plate p"
                 " JOIN p.plateAcquisitions pa"
@@ -293,6 +297,7 @@ class Importer:
                 params,
                 self.conn.SERVICE_OPTS
                 )
+            print(results)
             self.plate_ids = [r[0].val for r in results]
             return self.plate_ids
 
