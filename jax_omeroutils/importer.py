@@ -343,7 +343,7 @@ class Importer:
         image_moved : boolean
             True if images were found and moved, else False.
         """
-        if len(self.image_ids) == 0:
+        if not self.image_ids:
             logging.error('No image ids to organize')
             return False
         orphans = get_image_ids(self.conn)
