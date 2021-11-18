@@ -30,7 +30,7 @@ def main(import_md):
                           port=OMERO_PORT,
                           secure=True)
     suconn.connect()
-    conn = suconn.suConn(import_user, import_group, 21600000)
+    conn = suconn.suConn(import_user, import_group, 2160000000)
     suconn.close()
 
     # Import targets from import.json
@@ -40,9 +40,19 @@ def main(import_md):
         print(f'Preparing to import {str(file_path)}')
         imp_ctl = Importer(conn, file_path, md)
         imp_ctl.import_ln_s(OMERO_HOST, OMERO_PORT)
-        imp_ctl.get_image_ids()
-        imp_ctl.organize()
-        imp_ctl.annotate()
+        print("import done")
+        if imp_ctl.screen:
+            print("it's a screen")
+            imp_ctl.get_plate_ids()
+            print(f"plate ids get! {str(imp_ctl.plate_ids[0])}")
+            imp_ctl.organize_plates()
+            print("plate organized")
+            imp_ctl.annotate_plates()
+            print("plate annotated")
+        else:
+            imp_ctl.get_image_ids()
+            imp_ctl.organize_images()
+            imp_ctl.annotate_images()
 
     conn.close()
     return

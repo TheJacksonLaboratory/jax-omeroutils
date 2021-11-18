@@ -78,10 +78,10 @@ def main(md_filepath, user_name, group, admin_user, server, port):
                 # map annotations
                 ns = CURRENT_MD_NS
                 map_ann_id = multi_post_map_annotation(conn,
-                                                 "Image",
-                                                 image_ids,
-                                                 row,
-                                                 ns)
+                                                       "Image",
+                                                       image_ids,
+                                                       row,
+                                                       ns)
                 print(f'Created annotation:{map_ann_id}'
                       f' and linked to images:{image_ids}')
                 processed_filenames.append(filename)

@@ -9,6 +9,7 @@ intake (using the intake.py module).
 import logging
 from ezomero import post_dataset, post_project
 from ezomero import get_image_ids, link_images_to_dataset
+from ezomero import post_screen, link_plates_to_screen
 from importlib import import_module
 from omero.cli import CLI
 from omero.plugins.sessions import SessionsControl
@@ -80,6 +81,32 @@ def set_or_create_dataset(conn, project_id, dataset_name):
     return dataset_id
 
 
+def set_or_create_screen(conn, screen_name):
+    """Create a new Screen unless one already exists with that name.
+
+    Parameter
+    ---------
+    conn : ``omero.gateway.BlitzGateway`` object.
+        OMERO connection.
+    screen_name : str
+        The name of the Screen needed. If there is no Screen with a matching
+        name in the group specified in ``conn``, a new Screen will be created.
+
+    Returns
+    -------
+    screen_id : int
+        The id of the Project that was either found or created.
+    """
+    ss = conn.getObjects('Screen', attributes={'name': screen_name})
+    ss = list(ss)
+    if len(ss) == 0:
+        screen_id = post_screen(conn, screen_name)
+        print(f'Created new Screen:{screen_id}')
+    else:
+        screen_id = ss[0].getId()
+    return screen_id
+
+
 def multi_post_map_annotation(conn, object_type, object_ids, kv_dict, ns):
     """Create a single new MapAnnotation and link to multiple images.
     Parameters
@@ -136,6 +163,7 @@ def multi_post_map_annotation(conn, object_type, object_ids, kv_dict, ns):
         o.linkAnnotation(map_ann)
     return map_ann.getId()
 
+
 # Class definitions
 class Importer:
     """Class for managing OMERO imports using OMERO CLI.
@@ -183,10 +211,21 @@ class Importer:
         self.md = import_md
         self.session_uuid = conn.getSession().getUuid().val
         self.filename = self.md.pop('filename')
-        self.project = self.md.pop('project')
-        self.dataset = self.md.pop('dataset')
+        if 'project' in self.md.keys():
+            self.project = self.md.pop('project')
+        else:
+            self.project = None
+        if 'dataset' in self.md.keys():
+            self.dataset = self.md.pop('dataset')
+        else:
+            self.dataset = None
+        if 'screen' in self.md.keys():
+            self.screen = self.md.pop('screen')
+        else:
+            self.screen = None
         self.imported = False
         self.image_ids = None
+        self.plate_ids = None
 
     def get_image_ids(self):
         """Get the Ids of imported images.
@@ -220,8 +259,49 @@ class Importer:
                 )
             self.image_ids = [r[0].val for r in results]
             return self.image_ids
+    
+    def get_plate_ids(self):
+        """Get the Ids of imported plates.
 
-    def annotate(self):
+        Note that this will not find plates if they have not been imported.
+        Also, while plate_ids are returned, this method also sets
+        ``self.plate_ids``.
+
+        Returns
+        -------
+        plate_ids : list of ints
+            Ids of plates imported from the specified client path, which
+            itself is derived from ``self.file_path`` and ``self.filename``.
+
+        """
+        if self.imported is not True:
+            logging.error(f'File {self.file_path} has not been imported')
+            return None
+        else:
+            print("time to get some IDs")
+            q = self.conn.getQueryService()
+            print(q)
+            params = Parameters()
+            path_query = str(self.file_path).strip('/')
+            print(f"path query: f{path_query}")
+            params.map = {"cpath": rstring(path_query)}
+            print(params)
+            results = q.projection(
+                "SELECT DISTINCT p.id FROM Plate p"
+                " JOIN p.plateAcquisitions pa"
+                " JOIN pa.wellSample ws"
+                " JOIN ws.image i"
+                " JOIN i.fileset fs"
+                " JOIN fs.usedFiles u"
+                " WHERE u.clientPath=:cpath",
+                params,
+                self.conn.SERVICE_OPTS
+                )
+            print(results)
+            self.plate_ids = [r[0].val for r in results]
+            return self.plate_ids
+
+    def annotate_images(self):
         """Post map annotation (``self.md``) to images ``self.image_ids``.
 
         Returns
@@ -234,11 +314,28 @@ class Importer:
             return None
         else:
             map_ann_id = multi_post_map_annotation(self.conn, "Image",
-                                             self.image_ids, self.md,
-                                             CURRENT_MD_NS)
+                                                   self.image_ids, self.md,
+                                                   CURRENT_MD_NS)
             return map_ann_id
 
-    def organize(self):
+    def annotate_plates(self):
+        """Post map annotation (``self.md``) to plates ``self.plate_ids``.
+
+        Returns
+        -------
+        map_ann_id : int
+            The Id of the MapAnnotation that was created.
+        """
+        if len(self.plate_ids) == 0:
+            logging.error('No plate ids to annotate')
+            return None
+        else:
+            map_ann_id = multi_post_map_annotation(self.conn, "Plate",
+                                                   self.plate_ids, self.md,
+                                                   CURRENT_MD_NS)
+            return map_ann_id
+
+    def organize_images(self):
         """Move images to ``self.project``/``self.dataset``.
 
         Returns
@@ -246,7 +343,7 @@ class Importer:
         image_moved : boolean
             True if images were found and moved, else False.
         """
-        if len(self.image_ids) == 0:
+        if not self.image_ids:
             logging.error('No image ids to organize')
             return False
         orphans = get_image_ids(self.conn)
@@ -260,6 +357,23 @@ class Importer:
                                                    self.dataset)
                 link_images_to_dataset(self.conn, [im_id], dataset_id)
                 print(f'Moved Image:{im_id} to Dataset:{dataset_id}')
+        return True
+
+    def organize_plates(self):
+        """Move plates to ``self.screen``.
+
+        Returns
+        -------
+        plate_moved : boolean
+            True if plates were found and moved, else False.
+        """
+        if len(self.plate_ids) == 0:
+            logging.error('No plate ids to organize')
+            return False
+        for pl_id in self.plate_ids:
+            screen_id = set_or_create_screen(self.conn, self.screen)
+            link_plates_to_screen(self.conn, [pl_id], screen_id)
+            print(f'Moved Plate:{pl_id} to Screen:{screen_id}')
         return True
 
     def import_ln_s(self, host, port):

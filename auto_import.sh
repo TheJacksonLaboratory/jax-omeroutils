@@ -39,7 +39,7 @@ cd "$(dirname "$0")"
 
 arguments="$*"
 # check for folders last modified more than 60 mins ago
-for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +60); do 
+sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin +60 | while read dir; do 
 
     skip=false
     if [ "$exclude" ]; then
@@ -55,7 +55,7 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
         # check whether email will need to be sent
         email=false
         # time cutoff is 60 mins + gap between cron runs (in our case, 360 mins)
-        modified=$(sudo -u $user find $dir -mindepth 1 -maxdepth 1 -type f -cmin -420 | wc -l)
+        modified=$(sudo -u $user find "$dir" -mindepth 1 -maxdepth 1 -type f -cmin -420 | wc -l)
         echo "Folder has $modified modified files since last cron run."
         if [ $modified -gt 1 ]; then
             email=true
@@ -67,13 +67,13 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
 
         #check whether folder is "empty" now
         empty=false
-        allfiles=$(sudo -u $user find $dir -mindepth 1 -maxdepth 1 -type f | wc -l)
-        nonimages=$(sudo -u $user find $dir -mindepth 1 -maxdepth 1 -regex ".*\.\(xlsx\|csv\|log\|json\|db\|ini\|txt\)" -type f | wc -l)
+        allfiles=$(sudo -u $user find "$dir" -mindepth 1 -maxdepth 1 -type f | wc -l)
+        nonimages=$(sudo -u $user find "$dir" -mindepth 1 -maxdepth 1 -regex ".*\.\(xlsx\|csv\|log\|json\|db\|ini\|txt\)" -type f | wc -l)
         echo "Folder has $allfiles files left, of which $nonimages are typical non-images."
         if [ $allfiles -eq $nonimages ]; then
             empty=true
         fi
-        logfile=$(sudo -u $user find $dir -mindepth 1 -maxdepth 1 -regex ".*\.\(log\)" -type f -mmin -10)
+        logfile="$(sudo -u $user find "$dir" -mindepth 1 -maxdepth 1 -regex ".*\.\(log\)" -type f -mmin -10)"
         empty_msg=""
         # add message for empty folder
         if [ "$empty" = true ]; then
@@ -90,10 +90,10 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
         # send email if necessary
         if [ "$email" = true ] && sudo -u $user [ -f "$logfile" ]; then
             #retrieve email of user by splitting dir name on underscore
-            address=$(basename $dir | cut -f1 -d_)"@jax.org"
-            address_owner=$(find $dir -maxdepth 0 -printf '%u\n')"@jax.org"
+            address="$(basename "$dir" | cut -f1 -d_)""@jax.org"
+            address_owner="$(find "$dir" -maxdepth 0 -printf '%u\n')""@jax.org"
             echo "Sending email to user $address"
-            email_dir=$(basename $dir)
+            email_dir=$(basename "$dir")
             if [ $address_owner != $address ]; then
                 echo "Also sending email to user $address_owner"
                 (
@@ -101,7 +101,7 @@ for dir in $(sudo -u $user find $folder -mindepth 1 -maxdepth 1 -type d -mmin +6
                                 echo "From: noreply-omero-importer@jax.org" && \
                                 echo "Subject: omero import log for folder $email_dir" && \
                                 echo "" && \
-                                sudo -u $user cat $logfile && \
+                                sudo -u $user cat "$logfile" && \
                                 echo "$empty_msg"
                                 ) > "$HOME"/temp_email_owner.txt
                 ssmtp $address_owner < "$HOME"/temp_email_owner.txt
