@@ -19,7 +19,8 @@ def main(import_batch_directory, log_directory, timestamp):
     conn = BlitzGateway(OMERO_USER,
                         OMERO_PASS,
                         host=OMERO_HOST,
-                        port=OMERO_PORT)
+                        port=OMERO_PORT,
+                        secure=True)
     conn.connect()
     batch = ImportBatch(conn, import_batch_directory)
     batch.set_logging(log_directory, timestamp)
@@ -33,6 +34,7 @@ def main(import_batch_directory, log_directory, timestamp):
     batch.set_server_path()
     batch.load_targets()
     batch.write_json()
+    batch.write_filelist()
     conn.close()
 
 

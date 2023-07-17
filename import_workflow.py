@@ -6,6 +6,8 @@ import sys
 import grp
 import pathlib
 from datetime import datetime
+from jax_omeroutils.config import OMERO_USER, OMERO_PASS
+from jax_omeroutils.config import OMERO_HOST, OMERO_PORT
 
 
 def demote(user_uid, user_gid, homedir):
@@ -65,6 +67,26 @@ def main(target, datauser, omerouser, logdir):
     print("stdout prep:", stdoutval)
     print("stderr prep:", stderrval)
     fileset_list = retrieve_fileset(stdoutval, target)
+
+    # Run omero transfer prepare
+
+    filelist = str(pathlib.Path(target) / 'filelist.txt')
+    prepare = ['omero', '-s', OMERO_HOST, '-p', str(OMERO_PORT),
+               '-u', OMERO_USER, '-w', OMERO_PASS,
+               'transfer', 'prepare', '--filelist', filelist,]
+    process = subprocess.Popen(prepare,
+                               preexec_fn=demote(data_user_uid,
+                                                 data_user_gid,
+                                                 data_user_home),
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE
+                               )
+    stdoutval, stderrval = process.communicate()
+    stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
+    print("stdout prepare:", stdoutval)
+    print("stderr prepare:", stderrval)
+
+    # Move data
 
     datamove = [sys.executable, curr_folder + '/move_data.py',
                 target, fileset_list, logdir, '--timestamp', timestamp]

@@ -149,8 +149,9 @@ def load_md_from_file(md_filepath, sheet_name=0):
                      "'OMERO group:' fields, or you have added your username/"+
                      "group on the same cell as those fields! Please add them "+
                      "on column B.")
-        raise KeyError(f"User and group fields are non-existent or malformed.")
-    return(md_json)
+        raise KeyError("User and group fields are non-existent or malformed.")
+    return (md_json)
+
 
 # Class definitions #
 #####################
@@ -419,12 +420,18 @@ class ImportBatch:
             import_json['user_supplied_md'] = self.md
             import_json['server_path'] = str(self.server_path)
             import_json['import_path'] = str(self.import_path)
-            import_json['import_targets'] = []
-            for target in self.import_target_list:
-                import_json['import_targets'].append(target.target_md)
+            # import_json['import_targets'] = []
+            # for target in self.import_target_list:
+            #     import_json['import_targets'].append(target.target_md)
             with open(self.import_path / 'import.json', 'w') as fp:
                 json.dump(import_json, fp)
             return True
+
+    def write_filelist(self):
+        with open(self.import_path / 'filelist.txt', 'w') as fp:
+            for target in self.import_target_list:
+                print(target.path_to_target, file=fp)
+        return
 
 
 class ImportTarget:
