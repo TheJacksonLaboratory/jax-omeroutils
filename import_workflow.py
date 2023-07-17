@@ -35,6 +35,9 @@ def retrieve_fileset(stdoutval, target):
         f.close()
     return filelist_path
 
+def edit_xml(target):
+    return
+
 
 def main(target, datauser, omerouser, logdir):
 
@@ -85,6 +88,8 @@ def main(target, datauser, omerouser, logdir):
     stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
     print("stdout prepare:", stdoutval)
     print("stderr prepare:", stderrval)
+
+    edit_xml(target)
 
     # Move data
 
