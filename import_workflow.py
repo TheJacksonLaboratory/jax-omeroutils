@@ -5,6 +5,10 @@ import pwd
 import sys
 import grp
 import pathlib
+import json
+from jax_omeroutils.xml_editor import add_projects_datasets, add_screens
+from jax_omeroutils.xml_editor import add_annotations
+from ome_types import from_xml, to_xml
 from datetime import datetime
 from jax_omeroutils.config import OMERO_USER, OMERO_PASS
 from jax_omeroutils.config import OMERO_HOST, OMERO_PORT
@@ -35,7 +39,18 @@ def retrieve_fileset(stdoutval, target):
         f.close()
     return filelist_path
 
+
 def edit_xml(target):
+    ome = from_xml(str(pathlib.Path(target) / "transfer.xml"))
+    with open(str(pathlib.Path(target) / "import.json"), "r") as fp:
+        imp_json = json.load(fp)
+    print(ome)
+    print(imp_json)
+    ome = add_projects_datasets(ome, imp_json)
+    ome = add_screens(ome, imp_json)
+    ome = add_annotations(ome, imp_json)
+    with open(str(pathlib.Path(target) / "transfer.xml"), "w") as fp:
+        print(to_xml(ome), file=fp)
     return
 
 
@@ -43,7 +58,7 @@ def main(target, datauser, omerouser, logdir):
 
     # Data user info
     data_user_uid = pwd.getpwnam(datauser).pw_uid
-    data_user_gid = grp.getgrnam('omeroadmin').gr_gid
+    data_user_gid = grp.getgrnam('erick').gr_gid
     data_user_home = f"/home/{datauser}"
 
     # Omero user info
