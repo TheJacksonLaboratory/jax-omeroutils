@@ -59,7 +59,14 @@ def add_screens(ome, imp_json):
     if 'screen' not in columns:
         return ome
     else:
-        print(columns)
+        md = imp_json['user_supplied_md']['file_metadata']
+        scr_count = 1
+        screens = [i['screen'] for i in md]
+        for scr in list(set(screens)):
+            id = f"Screen:{scr_count}"
+            scr_count += 1
+            scr_obj = create_screen(id=id, name=scr)
+            newome.screens.append(scr_obj)
     return newome
 
 
@@ -72,5 +79,11 @@ def add_annotations(ome, imp_json):
         columns.remove('dataset')
     if 'screen' in columns:
         columns.remove('screen')
+    md = imp_json['user_supplied_md']['file_metadata']
     print(columns)
+    for line in md:
+        filename = line['filename']
+        ann_dict = {i:line[i] for i in columns}
+        ann_dict.pop('filename')
+        print(ann_dict)
     return newome
