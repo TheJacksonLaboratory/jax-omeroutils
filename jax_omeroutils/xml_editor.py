@@ -1,7 +1,12 @@
 import copy
+from os import sep
 from collections import defaultdict
 from ome_types.model import Project, Screen, Dataset, MapAnnotation
 from ome_types.model import DatasetRef, AnnotationRef
+from ome_types.model import CommentAnnotation, Map
+from ome_types.model.map import M
+
+CURRENT_MD_NS = 'jax.org/omeroutils/user_submitted/v0'
 
 
 def create_proj(**kwargs):
@@ -80,11 +85,36 @@ def add_annotations(ome, imp_json):
     if 'screen' in columns:
         columns.remove('screen')
     md = imp_json['user_supplied_md']['file_metadata']
-    print(columns)
+    max_ann = 0
+    for ann in newome.structured_annotations:
+        clean_id = int(ann.id.split(":")[-1])
+        if clean_id > max_ann:
+            max_ann = clean_id
+    ann_count = max_ann + 1
     for line in md:
         filename = line['filename']
         ann_dict = {i: line[i] for i in columns}
         ann_dict.pop('filename')
         ann_dict = {k: v for k, v in ann_dict.items() if isinstance(v, str)}
-        print(ann_dict)
+        for ann in ome.structured_annotations:
+            if isinstance(ann, CommentAnnotation):
+                src_file = ann.value.split(sep)[-1]
+                if src_file == filename:
+                    img_id = ann.namespace
+                    for i in newome.images:
+                        if i.id == img_id:
+                            mmap = []
+                            for _key, _value in ann_dict.items():
+                                if _value:
+                                    mmap.append(M(k=_key, value=str(_value)))
+                                else:
+                                    mmap.append(M(k=_key, value=''))
+                            ann, annref = create_kv_and_ref(id=f"Annotation:{ann_count}", ns=CURRENT_MD_NS, value=Map(m=mmap))
+                            ann_count += 1
+                            newome.structured_annotations.append(ann)
+                            i.annotation_ref.append(annref)
     return newome
+
+
+def move_images(ome, imp_json):
+    return
