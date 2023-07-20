@@ -2,7 +2,7 @@ import copy
 from os import sep
 from collections import defaultdict
 from ome_types.model import Project, Screen, Dataset, MapAnnotation
-from ome_types.model import DatasetRef, AnnotationRef
+from ome_types.model import DatasetRef, AnnotationRef, ImageRef
 from ome_types.model import CommentAnnotation, Map
 from ome_types.model.map import M
 
@@ -117,4 +117,31 @@ def add_annotations(ome, imp_json):
 
 
 def move_images(ome, imp_json):
-    return
+    newome = copy.deepcopy(ome)
+    md = imp_json['user_supplied_md']['file_metadata']
+    for line in md:
+        dsname = line['dataset']
+        projname = line['project']
+        right_ds = []
+        for proj in newome.projects:
+            if projname == proj.name:
+                for dsref in proj.dataset_ref:
+                    for ds in newome.datasets:
+                        if dsref.id == ds.id and ds.name == dsname:
+                            right_ds.append(ds.id)
+        images = []
+        print(right_ds)
+        filename = line['filename']
+        for ann in newome.structured_annotations:
+            if isinstance(ann, CommentAnnotation):
+                src_file = ann.value.split(sep)[-1]
+                if src_file == filename:
+                    images.append(ann.namespace)
+        print(images)
+        for img in newome.images:
+            if img.id in images:
+                imgref = ImageRef(id=img.id)
+                for ds in newome.datasets:
+                    if ds.id in right_ds:
+                        ds.image_ref.append(imgref)
+    return newome
