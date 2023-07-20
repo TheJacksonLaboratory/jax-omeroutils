@@ -83,7 +83,8 @@ def add_annotations(ome, imp_json):
     print(columns)
     for line in md:
         filename = line['filename']
-        ann_dict = {i:line[i] for i in columns}
+        ann_dict = {i: line[i] for i in columns}
         ann_dict.pop('filename')
+        ann_dict = {k: v for k, v in ann_dict.items() if isinstance(v, str)}
         print(ann_dict)
     return newome
