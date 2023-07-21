@@ -76,6 +76,18 @@ def add_screens(ome, imp_json):
 
 
 def add_annotations(ome, imp_json):
+    columns = list(imp_json['user_supplied_md']['file_metadata'][0].keys())
+    if 'project' in columns:
+        newome = add_annotations_images(ome, imp_json)
+        return newome
+    elif 'screen' in columns:
+        newome = add_annotations_plates(ome, imp_json)
+        return newome
+    return ome
+    
+
+
+def add_annotations_images(ome, imp_json):
     newome = copy.deepcopy(ome)
     columns = list(imp_json['user_supplied_md']['file_metadata'][0].keys())
     if 'project' in columns:
@@ -116,6 +128,21 @@ def add_annotations(ome, imp_json):
     return newome
 
 
+def add_annotations_plates(ome, imp_json):
+    return
+
+
+def move_objects(ome, imp_json):
+    columns = list(imp_json['user_supplied_md']['file_metadata'][0].keys())
+    if 'project' in columns:
+        newome = move_images(ome, imp_json)
+        return newome
+    elif 'screen' in columns:
+        newome = move_plates(ome, imp_json)
+        return newome
+    return ome
+
+
 def move_images(ome, imp_json):
     newome = copy.deepcopy(ome)
     md = imp_json['user_supplied_md']['file_metadata']
@@ -145,3 +172,7 @@ def move_images(ome, imp_json):
                     if ds.id in right_ds:
                         ds.image_ref.append(imgref)
     return newome
+
+
+def move_plates(ome, imp_json):
+    return
