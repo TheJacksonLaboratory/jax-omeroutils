@@ -7,7 +7,7 @@ import grp
 import pathlib
 import json
 from jax_omeroutils.xml_editor import add_projects_datasets, add_screens
-from jax_omeroutils.xml_editor import add_annotations, move_images
+from jax_omeroutils.xml_editor import add_annotations, move_objects
 from ome_types import from_xml, to_xml
 from datetime import datetime
 from jax_omeroutils.config import OMERO_USER, OMERO_PASS
@@ -49,7 +49,7 @@ def edit_xml(target):
     ome = add_projects_datasets(ome, imp_json)
     ome = add_screens(ome, imp_json)
     ome = add_annotations(ome, imp_json)
-    ome = move_images(ome, imp_json)
+    ome = move_objects(ome, imp_json)
     with open(str(pathlib.Path(target) / "transfer.xml"), "w") as fp:
         print(to_xml(ome), file=fp)
     return

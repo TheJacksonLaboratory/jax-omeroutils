@@ -3,6 +3,7 @@ from os import sep
 from collections import defaultdict
 from ome_types.model import Project, Screen, Dataset, MapAnnotation
 from ome_types.model import DatasetRef, AnnotationRef, ImageRef
+from ome_types.model.screen import PlateRef
 from ome_types.model import CommentAnnotation, Map
 from ome_types.model.map import M
 
@@ -94,8 +95,6 @@ def add_annotations_images(ome, imp_json):
         columns.remove('project')
     if 'dataset' in columns:
         columns.remove('dataset')
-    if 'screen' in columns:
-        columns.remove('screen')
     md = imp_json['user_supplied_md']['file_metadata']
     max_ann = 0
     for ann in newome.structured_annotations:
@@ -121,7 +120,9 @@ def add_annotations_images(ome, imp_json):
                                     mmap.append(M(k=_key, value=str(_value)))
                                 else:
                                     mmap.append(M(k=_key, value=''))
-                            ann, annref = create_kv_and_ref(id=f"Annotation:{ann_count}", ns=CURRENT_MD_NS, value=Map(m=mmap))
+                            ann, annref = create_kv_and_ref(
+                                id=f"Annotation:{ann_count}", ns=CURRENT_MD_NS,
+                                value=Map(m=mmap))
                             ann_count += 1
                             newome.structured_annotations.append(ann)
                             i.annotation_ref.append(annref)
@@ -129,6 +130,41 @@ def add_annotations_images(ome, imp_json):
 
 
 def add_annotations_plates(ome, imp_json):
+    newome = copy.deepcopy(ome)
+    columns = list(imp_json['user_supplied_md']['file_metadata'][0].keys())
+    if 'screen' in columns:
+        columns.remove('screen')
+    md = imp_json['user_supplied_md']['file_metadata']
+    max_ann = 0
+    for ann in newome.structured_annotations:
+        clean_id = int(ann.id.split(":")[-1])
+        if clean_id > max_ann:
+            max_ann = clean_id
+    ann_count = max_ann + 1
+    for line in md:
+        filename = line['filename']
+        ann_dict = {i: line[i] for i in columns}
+        ann_dict.pop('filename')
+        ann_dict = {k: v for k, v in ann_dict.items() if isinstance(v, str)}
+        for ann in ome.structured_annotations:
+            if isinstance(ann, CommentAnnotation):
+                src_file = ann.value.split(sep)[-1]
+                if src_file == filename:
+                    pl_id = ann.namespace
+                    for pl in newome.plates:
+                        if pl.id == pl_id:
+                            mmap = []
+                            for _key, _value in ann_dict.items():
+                                if _value:
+                                    mmap.append(M(k=_key, value=str(_value)))
+                                else:
+                                    mmap.append(M(k=_key, value=''))
+                            ann, annref = create_kv_and_ref(
+                                id=f"Annotation:{ann_count}", ns=CURRENT_MD_NS,
+                                value=Map(m=mmap))
+                            ann_count += 1
+                            newome.structured_annotations.append(ann)
+                            pl.annotation_ref.append(annref)
     return
 
 
@@ -157,14 +193,12 @@ def move_images(ome, imp_json):
                         if dsref.id == ds.id and ds.name == dsname:
                             right_ds.append(ds.id)
         images = []
-        print(right_ds)
         filename = line['filename']
         for ann in newome.structured_annotations:
             if isinstance(ann, CommentAnnotation):
                 src_file = ann.value.split(sep)[-1]
                 if src_file == filename:
                     images.append(ann.namespace)
-        print(images)
         for img in newome.images:
             if img.id in images:
                 imgref = ImageRef(id=img.id)
@@ -175,4 +209,25 @@ def move_images(ome, imp_json):
 
 
 def move_plates(ome, imp_json):
+    newome = copy.deepcopy(ome)
+    md = imp_json['user_supplied_md']['file_metadata']
+    for line in md:
+        scrname = line['screen']
+        right_scr = []
+        for scr in newome.screens:
+            if scrname == scr.name:
+                right_scr.append(scr.id)
+        plates = []
+        filename = line['filename']
+        for ann in newome.structured_annotations:
+            if isinstance(ann, CommentAnnotation):
+                src_file = ann.value.split(sep)[-1]
+                if src_file == filename:
+                    plates.append(ann.namespace)
+        for pl in newome.plates:
+            if pl.id in plates:
+                plref = PlateRef(id=pl.id)
+                for scr in newome.screens:
+                    if scr.id in right_scr:
+                        scr.plate_ref.append(plref)
     return
