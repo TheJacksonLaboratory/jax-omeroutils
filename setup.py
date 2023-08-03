@@ -9,7 +9,7 @@ setuptools.setup(
     maintainer="Dave Mellert",
     maintainer_email="Dave.Mellert@jax.org",
     description=("A package for working with OMERO"
-                 "by ResearchIT at The Jackson Laboratory."),
+                 "by Research IT at The Jackson Laboratory."),
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/TheJacksonLaboratory/jax-omeroutils",
@@ -19,7 +19,8 @@ setuptools.setup(
         'pandas',
         'numpy',
         'openpyxl',
-        'ezomero'
+        'ezomero',
+        'omero-cli-transfer'
     ],
-    python_requires='>=3.6'
+    python_requires='>=3.8'
 )
