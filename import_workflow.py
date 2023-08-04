@@ -52,7 +52,7 @@ def edit_xml(target):
     ome = move_objects(ome, imp_json)
     with open(str(pathlib.Path(target) / "transfer.xml"), "w") as fp:
         print(to_xml(ome), file=fp)
-    return
+    return str(pathlib.Path(target) / "transfer.xml")
 
 
 def main(target, datauser, omerouser, logdir):
@@ -105,12 +105,13 @@ def main(target, datauser, omerouser, logdir):
     print("stdout prepare:", stdoutval)
     print("stderr prepare:", stderrval)
 
-    edit_xml(target)
+    xml_path = edit_xml(target)
 
     # Move data
 
     datamove = [sys.executable, curr_folder + '/move_data.py',
-                target, fileset_list, logdir, '--timestamp', timestamp]
+                target, fileset_list, xml_path, logdir, '--timestamp',
+                timestamp]
     process = subprocess.Popen(datamove,
                                preexec_fn=demote(data_user_uid,
                                                  data_user_gid,

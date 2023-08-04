@@ -32,6 +32,9 @@ def main(import_md):
     suconn.connect()
     conn = suconn.suConn(import_user, import_group, 2160000000)
     suconn.close()
+    
+    # do I need a session key for conn? can I pass --sudo on transfer itself?
+
 
     # Import targets from import.json
     for md in file_metadata:

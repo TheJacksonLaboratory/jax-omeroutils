@@ -77,10 +77,11 @@ class DataMover:
         into OMERO and hence moved.
     """
 
-    def __init__(self, import_json_path, fileset_list_path):
+    def __init__(self, import_json_path, fileset_list_path, xml_path):
         self.logger = logging.getLogger('datamover')
         self.import_json_path = Path(import_json_path)
         self.fileset_list_path = Path(fileset_list_path)
+        self.xml_path = Path(xml_path)
 
         if not self.import_json_path.exists():
             raise FileNotFoundError('import.json not found')
@@ -134,6 +135,15 @@ class DataMover:
                 print(f'Auxiliary file moved to {result}')
                 os.chmod(result, FILE_PERM)
 
+        # move transfer.xml
+        result = file_mover(self.xml_path, self.server_path)
+        if result:
+            os.chmod(result, FILE_PERM)
+        else: 
+            result = self.server_path / 'transfer.xml'
+        if result is not None:
+            print(f'XML file moved to {result}')
+        
         # Move import.json
         result = file_mover(self.import_json_path, self.server_path)
         if result:
