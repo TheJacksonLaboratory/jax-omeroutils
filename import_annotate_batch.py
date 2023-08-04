@@ -27,7 +27,7 @@ def main(import_md):
     unpack = ['omero', '-s', OMERO_HOST, '-p', str(OMERO_PORT),
                '-u', import_user, '-w', OMERO_PASS, '-g', import_group,
                '--sudo', OMERO_USER,
-               'transfer', 'unpack', data_dir]
+               'transfer', 'unpack', '--ln_s', '--folder', data_dir, '--merge']
     process = subprocess.Popen(unpack,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE
