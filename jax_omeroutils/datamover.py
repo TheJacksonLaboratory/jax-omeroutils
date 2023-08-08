@@ -95,27 +95,27 @@ class DataMover:
                 self.fileset_list = f_list.readlines()
         self.import_path = Path(self.import_json['import_path'])
         self.server_path = Path(self.import_json['server_path'])
-        self.import_targets = self.import_json['import_targets']
+        # self.import_targets = self.import_json['import_targets']
 
     def move_data(self):
         # Prepare destination
         self.server_path.mkdir(mode=DIR_PERM, parents=True, exist_ok=True)
 
         # Move import targets first
-        for target in self.import_targets:
-            src_fp = self.import_path / target['filename']
-            subfolder = target['filename'].rsplit('/',1)
-            if len(subfolder) > 1:
-                subfolder_path = self.server_path / subfolder[0]
-            else:
-                subfolder_path = self.server_path
-            file = str(target['filename'])
-            result = file_mover(src_fp, subfolder_path)
-            if result is not None:
-                print(f'Main file moved to {result}')
-                self.logger.debug(f'Success moving file {file} to '+
-                                  f'the server. It will be imported.')
-                os.chmod(result, FILE_PERM)
+        # for target in self.import_targets:
+        #     src_fp = self.import_path / target['filename']
+        #     subfolder = target['filename'].rsplit('/',1)
+        #     if len(subfolder) > 1:
+        #         subfolder_path = self.server_path / subfolder[0]
+        #     else:
+        #         subfolder_path = self.server_path
+        #     file = str(target['filename'])
+        #     result = file_mover(src_fp, subfolder_path)
+        #     if result is not None:
+        #         print(f'Main file moved to {result}')
+        #         self.logger.debug(f'Success moving file {file} to '+
+        #                           f'the server. It will be imported.')
+        #         os.chmod(result, FILE_PERM)
 
         for target in self.fileset_list:
             src_fp = target.strip()

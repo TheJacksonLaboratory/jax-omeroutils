@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="jax-omeroutils",
-    version="0.0.1",
+    version="0.1.1",
     maintainer="Dave Mellert",
     maintainer_email="Dave.Mellert@jax.org",
     description=("A package for working with OMERO"
