@@ -88,9 +88,10 @@ def main(target, datauser, omerouser, logdir):
     fileset_list = retrieve_fileset(stdoutval, target)
 
     # Run omero transfer prepare
-
+    env_folder = pathlib.Path(sys.executable).parent
+    omero_path = str(env_folder / "omero")
     filelist = str(pathlib.Path(target) / 'filelist.txt')
-    prepare = ['omero', '-s', OMERO_HOST, '-p', str(OMERO_PORT),
+    prepare = [omero_path, '-s', OMERO_HOST, '-p', str(OMERO_PORT),
                '-u', OMERO_USER, '-w', OMERO_PASS,
                'transfer', 'prepare', '--filelist', filelist,]
     process = subprocess.Popen(prepare,

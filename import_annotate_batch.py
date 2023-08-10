@@ -11,6 +11,7 @@ from jax_omeroutils.importer import Importer
 from omero.gateway import BlitzGateway
 from pathlib import Path
 import subprocess
+import sys
 
 
 def main(import_md):
@@ -24,10 +25,12 @@ def main(import_md):
     # file_metadata = batch_md['import_targets']
     data_dir = Path(batch_md['server_path'])
 
-    unpack = ['omero', '-s', OMERO_HOST, '-p', str(OMERO_PORT),
-               '-u', import_user, '-w', OMERO_PASS, '-g', import_group,
-               '--sudo', OMERO_USER,
-               'transfer', 'unpack', '--ln_s', '--folder', data_dir, '--merge']
+    env_folder = Path(sys.executable).parent
+    omero_path = str(env_folder / "omero")
+    unpack = [omero_path, '-s', OMERO_HOST, '-p', str(OMERO_PORT),
+              '-u', import_user, '-w', OMERO_PASS, '-g', import_group,
+              '--sudo', OMERO_USER,
+              'transfer', 'unpack', '--ln_s', '--folder', data_dir, '--merge']
     process = subprocess.Popen(unpack,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE
