@@ -59,7 +59,7 @@ def main(target, datauser, omerouser, logdir):
 
     # Data user info
     data_user_uid = pwd.getpwnam(datauser).pw_uid
-    data_user_gid = grp.getgrnam('omerodamin').gr_gid
+    data_user_gid = grp.getgrnam('omeroadmin').gr_gid
     data_user_home = f"/home/{datauser}"
 
     # Omero user info
