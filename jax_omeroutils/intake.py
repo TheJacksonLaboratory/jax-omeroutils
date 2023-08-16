@@ -481,6 +481,7 @@ class ImportTarget:
         cli.register('import', ImportControl, '_')
         print("path to target:")
         print(self.path_to_target)
+        print(['import', '-f', str(self.path_to_target)])
         cli.invoke(['import', '-f', str(self.path_to_target)])
 
         if cli.rv == 0:
