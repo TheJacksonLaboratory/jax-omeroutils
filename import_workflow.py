@@ -86,6 +86,7 @@ def main(target, datauser, omerouser, logdir):
     print("stdout prep:", stdoutval)
     print("stderr prep:", stderrval)
     fileset_list = retrieve_fileset(stdoutval, target)
+    
 
     # Run omero transfer prepare
     env_folder = pathlib.Path(sys.executable).parent
@@ -106,7 +107,13 @@ def main(target, datauser, omerouser, logdir):
     print("stdout prepare:", stdoutval)
     print("stderr prepare:", stderrval)
 
-    xml_path = edit_xml(target)
+    try:
+        f = open(str(pathlib.Path(target) / "import.json"))
+        f.close()
+    except FileNotFoundError:
+        pass
+    else:
+        xml_path = edit_xml(target)
 
     # Move data
 
