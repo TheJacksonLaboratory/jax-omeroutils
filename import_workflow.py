@@ -111,6 +111,7 @@ def main(target, datauser, omerouser, logdir):
         f = open(str(pathlib.Path(target) / "import.json"))
         f.close()
     except FileNotFoundError:
+        xml_path=""
         pass
     else:
         xml_path = edit_xml(target)

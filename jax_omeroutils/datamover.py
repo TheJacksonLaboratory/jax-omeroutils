@@ -136,13 +136,14 @@ class DataMover:
                 os.chmod(result, FILE_PERM)
 
         # move transfer.xml
-        result = file_mover(self.xml_path, self.server_path)
-        if result:
-            os.chmod(result, FILE_PERM)
-        else: 
-            result = self.server_path / 'transfer.xml'
-        if result is not None:
-            print(f'XML file moved to {result}')
+        if self.xml_path:
+            result = file_mover(self.xml_path, self.server_path)
+            if result:
+                os.chmod(result, FILE_PERM)
+            else: 
+                result = self.server_path / 'transfer.xml'
+            if result is not None:
+                print(f'XML file moved to {result}')
         
         # Move import.json
         result = file_mover(self.import_json_path, self.server_path)
