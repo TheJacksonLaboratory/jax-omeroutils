@@ -57,7 +57,7 @@ sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin +60 | while r
         # time cutoff is 60 mins + gap between cron runs (in our case, 360 mins)
         modified=$(sudo -u $user find "$dir" -mindepth 1 -maxdepth 1 -type f -cmin -420 | wc -l)
         echo "Folder has $modified modified files since last cron run."
-        if [ $modified -gt 1 ]; then
+        if [ $modified -gt 2 ]; then
             email=true
         fi
         echo "Will I send an email? $email"
