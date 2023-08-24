@@ -67,6 +67,7 @@ sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin +60 | while r
 
         #check whether folder is "empty" now
         empty=false
+        echo "Deleting temp files"
         rm -f "$dir"/filelist.txt
         rm -f "$dir"/moved_files.txt
         rm -f "$dir"/transfer.xml
