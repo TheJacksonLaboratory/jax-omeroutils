@@ -39,9 +39,9 @@ def add_projects_datasets(ome, imp_json):
         return ome
     else:
         md = imp_json['user_supplied_md']['file_metadata']
-        proj_ds = defaultdict(list)
+        proj_ds = defaultdict(set)
         for i in md:
-            proj_ds[i['project']].append(i['dataset'])
+            proj_ds[i['project']].add(i['dataset'])
         proj_count = 1
         ds_count = 1
         for project in proj_ds.keys():
@@ -86,7 +86,6 @@ def add_annotations(ome, imp_json):
         return newome
     return ome
     
-
 
 def add_annotations_images(ome, imp_json):
     newome = copy.deepcopy(ome)
