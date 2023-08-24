@@ -37,6 +37,7 @@ def retrieve_fileset(stdoutval, target):
     with open(filelist_path, 'w') as f:
         f.write("\n".join(files))
         f.close()
+    os.chmod(filelist_path, 766)
     return filelist_path
 
 
