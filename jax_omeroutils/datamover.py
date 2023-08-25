@@ -132,7 +132,8 @@ class DataMover:
             #append to server_path
             result = file_mover(src_fp, subfolder_path)
             if result is not None:
-                print(f'Auxiliary file moved to {result}')
+                self.logger.debug(f'Success moving file {src_fp} to '+
+                                  f'the server. It will be imported.')
                 os.chmod(result, FILE_PERM)
 
         # move transfer.xml
