@@ -30,13 +30,14 @@ def retrieve_json(stdoutval):
     return json_path
 
 
-def retrieve_fileset(stdoutval, target):
+def retrieve_fileset(stdoutval, target, datauser, datagroup):
     lines = stdoutval.split('\n')
     files = [i for i in lines if ((not i.startswith('#')) and (i != ''))]
     filelist_path = pathlib.Path(target) / 'moved_files.txt'
     with open(filelist_path, 'w') as f:
         f.write("\n".join(files))
         f.close()
+    os.chown(filelist_path, datauser, datagroup)
     os.chmod(filelist_path, 766)
     return filelist_path
 
@@ -86,7 +87,8 @@ def main(target, datauser, omerouser, logdir):
     stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
     print("stdout prep:", stdoutval)
     print("stderr prep:", stderrval)
-    fileset_list = retrieve_fileset(stdoutval, target)
+    fileset_list = retrieve_fileset(stdoutval, target,
+                                    data_user_uid, data_user_gid)
     
 
     # Run omero transfer prepare
@@ -103,6 +105,10 @@ def main(target, datauser, omerouser, logdir):
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE
                                )
+    if pathlib.Path(filelist).exists():
+        os.chmod(filelist, 766)
+    if ((pathlib.Path(target) / "transfer.xml").exists()):
+        os.chmod(pathlib.Path(target) / "transfer.xml", 766)
     stdoutval, stderrval = process.communicate()
     stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
     print("stdout prepare:", stdoutval)
