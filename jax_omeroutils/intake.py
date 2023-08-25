@@ -114,10 +114,10 @@ def load_md_from_file(md_filepath, sheet_name=0):
                                   header=None,
                                   dtype=str,
                                   engine="openpyxl")
-    except KeyError:
+    except ValueError:
         logger.error('Your spreadsheet does not have a Submission Form sheet - '+
                      'please use our template for submission!')
-        raise KeyError(f"Worksheet {sheet_name} does not exist.")
+        raise ValueError(f"Worksheet {sheet_name} does not exist.")
     md = pd.read_excel(md_filepath,
                        sheet_name=sheet_name,
                        skiprows=range(4),
