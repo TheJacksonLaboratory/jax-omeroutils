@@ -83,8 +83,6 @@ def add_annotations(ome, imp_json):
         return newome
     elif 'screen' in columns:
         newome = add_annotations_plates(ome, imp_json)
-        print("end of add annotations")
-        print(newome)
         return newome
     return ome
     
@@ -231,4 +229,4 @@ def move_plates(ome, imp_json):
                 for scr in newome.screens:
                     if scr.id in right_scr:
                         scr.plate_ref.append(plref)
-    return
+    return newome
