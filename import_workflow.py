@@ -133,11 +133,11 @@ def main(target, datauser, omerouser, logdir):
     json_path = retrieve_json(stdoutval)
     print("stdout move:", stdoutval)
     print("stderr move:", stderrval)
-    if os.exists(filelist):
+    if pathlib.Path(filelist).exists():
         os.remove(filelist)
-    if os.exists(pathlib.Path(target) / 'moved_files.txt'):
+    if (pathlib.Path(target) / 'moved_files.txt').exists():
         os.remove(pathlib.Path(target) / 'moved_files.txt')
-    if os.exists(pathlib.Path(target) / 'transfer.xml'):
+    if (pathlib.Path(target) / 'transfer.xml').exists():
         os.remove(pathlib.Path(target) / 'transfer.xml')
 
     if json_path and pathlib.Path(json_path).exists():
