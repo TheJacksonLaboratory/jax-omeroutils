@@ -170,7 +170,7 @@ def add_annotations_plates(ome, imp_json):
                             newome.structured_annotations.append(ann)
                             pl.annotation_ref.append(annref)
             print(newome, line)
-    return
+    return newome
 
 
 def move_objects(ome, imp_json):
