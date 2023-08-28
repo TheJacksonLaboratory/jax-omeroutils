@@ -47,9 +47,13 @@ def edit_xml(target, datauser, datagroup):
     with open(str(pathlib.Path(target) / "import.json"), "r") as fp:
         imp_json = json.load(fp)
     ome = add_projects_datasets(ome, imp_json)
+    print(ome)
     ome = add_screens(ome, imp_json)
+    print(ome)
     ome = add_annotations(ome, imp_json)
+    print(ome)
     ome = move_objects(ome, imp_json)
+    print(ome)
     with open(str(pathlib.Path(target) / "transfer.xml"), "w") as fp:
         print(to_xml(ome), file=fp)
     return str(pathlib.Path(target) / "transfer.xml")
