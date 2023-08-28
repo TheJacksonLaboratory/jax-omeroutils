@@ -131,10 +131,7 @@ def add_annotations_images(ome, imp_json):
 
 
 def add_annotations_plates(ome, imp_json):
-    print("in add annotations plates")
-    print(ome)
     newome = copy.deepcopy(ome)
-    print(newome)
     columns = list(imp_json['user_supplied_md']['file_metadata'][0].keys())
     if 'screen' in columns:
         columns.remove('screen')
@@ -169,7 +166,6 @@ def add_annotations_plates(ome, imp_json):
                             ann_count += 1
                             newome.structured_annotations.append(ann)
                             pl.annotation_ref.append(annref)
-            print(newome, line)
     return newome
 
 

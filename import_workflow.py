@@ -48,6 +48,8 @@ def edit_xml(target, datauser, datagroup):
     ome = add_screens(ome, imp_json)
     ome = add_annotations(ome, imp_json)
     ome = move_objects(ome, imp_json)
+    print(ome)
+    print(to_xml(ome))
     with open(str(pathlib.Path(target) / "transfer.xml"), "w") as fp:
         print(to_xml(ome), file=fp)
     return str(pathlib.Path(target) / "transfer.xml")
