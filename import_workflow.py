@@ -46,6 +46,7 @@ def edit_xml(target, datauser, datagroup):
         imp_json = json.load(fp)
     ome = add_projects_datasets(ome, imp_json)
     ome = add_screens(ome, imp_json)
+    print(ome)
     ome = add_annotations(ome, imp_json)
     print(ome)
     ome = move_objects(ome, imp_json)
