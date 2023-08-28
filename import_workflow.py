@@ -37,15 +37,11 @@ def retrieve_fileset(stdoutval, target, datauser, datagroup):
     with open(filelist_path, 'w') as f:
         f.write("\n".join(files))
         f.close()
-    os.chown(filelist_path, datauser, datagroup)
-    os.chmod(filelist_path, 0o774)
     return filelist_path
 
 
 def edit_xml(target, datauser, datagroup):
-    os.chmod(pathlib.Path(target) / "transfer.xml", 0o774)
-    os.chown(pathlib.Path(target) / "transfer.xml", datauser, datagroup)
-    ome = from_xml(str(pathlib.Path(target) / "transfer.xml"))
+   ome = from_xml(str(pathlib.Path(target) / "transfer.xml"))
     with open(str(pathlib.Path(target) / "import.json"), "r") as fp:
         imp_json = json.load(fp)
     ome = add_projects_datasets(ome, imp_json)
@@ -106,8 +102,6 @@ def main(target, datauser, omerouser, logdir):
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE
                                )
-    if pathlib.Path(filelist).exists():
-        os.chmod(filelist, 0o774)
     stdoutval, stderrval = process.communicate()
     stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
     print("stdout prepare:", stdoutval)
@@ -139,6 +133,13 @@ def main(target, datauser, omerouser, logdir):
     json_path = retrieve_json(stdoutval)
     print("stdout move:", stdoutval)
     print("stderr move:", stderrval)
+    if os.exists(filelist):
+        os.remove(filelist)
+    if os.exists(pathlib.Path(target) / 'moved_files.txt'):
+        os.remove(pathlib.Path(target) / 'moved_files.txt')
+    if os.exists(pathlib.Path(target) / 'transfer.xml'):
+        os.remove(pathlib.Path(target) / 'transfer.xml')
+
     if json_path and pathlib.Path(json_path).exists():
         print(f'json path will be {json_path}')
         out_path = pathlib.Path(json_path).parent / (timestamp + ".out")

@@ -67,10 +67,6 @@ sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin +60 | while r
 
         #check whether folder is "empty" now
         empty=false
-        echo "Deleting temp files"
-        rm -f "$dir"/filelist.txt
-        rm -f "$dir"/moved_files.txt
-        rm -f "$dir"/transfer.xml
         allfiles=$(sudo -u $user find "$dir" -mindepth 1 -maxdepth 1 -type f | wc -l)
         nonimages=$(sudo -u $user find "$dir" -mindepth 1 -maxdepth 1 -regex ".*\.\(xlsx\|csv\|log\|json\|db\|ini\|txt\|xml\)" -type f | wc -l)
         echo "Folder has $allfiles files left, of which $nonimages are typical non-images."
