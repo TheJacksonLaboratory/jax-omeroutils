@@ -38,11 +38,13 @@ def retrieve_fileset(stdoutval, target, datauser, datagroup):
         f.write("\n".join(files))
         f.close()
     os.chown(filelist_path, datauser, datagroup)
-    os.chmod(filelist_path, 0o766)
+    os.chmod(filelist_path, 0o774)
     return filelist_path
 
 
-def edit_xml(target):
+def edit_xml(target, datauser, datagroup):
+    os.chmod(pathlib.Path(target) / "transfer.xml", 0o774)
+    os.chown(filelist_path, datauser, datagroup)
     ome = from_xml(str(pathlib.Path(target) / "transfer.xml"))
     with open(str(pathlib.Path(target) / "import.json"), "r") as fp:
         imp_json = json.load(fp)
@@ -105,9 +107,7 @@ def main(target, datauser, omerouser, logdir):
                                stderr=subprocess.PIPE
                                )
     if pathlib.Path(filelist).exists():
-        os.chmod(filelist, 0o766)
-    if ((pathlib.Path(target) / "transfer.xml").exists()):
-        os.chmod(pathlib.Path(target) / "transfer.xml", 0o766)
+        os.chmod(filelist, 0o774)
     stdoutval, stderrval = process.communicate()
     stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
     print("stdout prepare:", stdoutval)
@@ -120,7 +120,7 @@ def main(target, datauser, omerouser, logdir):
         xml_path=""
         pass
     else:
-        xml_path = edit_xml(target)
+        xml_path = edit_xml(target, data_user_uid, data_user_gid)
 
     # Move data
 
