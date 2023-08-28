@@ -77,6 +77,8 @@ def add_screens(ome, imp_json):
 
 
 def add_annotations(ome, imp_json):
+    print("in add annotations")
+    print(ome)
     columns = list(imp_json['user_supplied_md']['file_metadata'][0].keys())
     if 'project' in columns:
         newome = add_annotations_images(ome, imp_json)
@@ -129,7 +131,10 @@ def add_annotations_images(ome, imp_json):
 
 
 def add_annotations_plates(ome, imp_json):
+    print("in add annotations plates")
+    print(ome)
     newome = copy.deepcopy(ome)
+    print(newome)
     columns = list(imp_json['user_supplied_md']['file_metadata'][0].keys())
     if 'screen' in columns:
         columns.remove('screen')
