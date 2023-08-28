@@ -44,7 +44,7 @@ def retrieve_fileset(stdoutval, target, datauser, datagroup):
 
 def edit_xml(target, datauser, datagroup):
     os.chmod(pathlib.Path(target) / "transfer.xml", 0o774)
-    os.chown(filelist_path, datauser, datagroup)
+    os.chown(pathlib.Path(target) / "transfer.xml", datauser, datagroup)
     ome = from_xml(str(pathlib.Path(target) / "transfer.xml"))
     with open(str(pathlib.Path(target) / "import.json"), "r") as fp:
         imp_json = json.load(fp)
