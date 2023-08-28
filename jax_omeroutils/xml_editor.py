@@ -120,7 +120,8 @@ def add_annotations_images(ome, imp_json):
                                 else:
                                     mmap.append(M(k=_key, value=''))
                             ann, annref = create_kv_and_ref(
-                                id=f"Annotation:{ann_count}", ns=CURRENT_MD_NS,
+                                id=f"Annotation:{ann_count}",
+                                namespace=CURRENT_MD_NS,
                                 value=Map(ms=mmap))
                             ann_count += 1
                             newome.structured_annotations.append(ann)
@@ -159,8 +160,9 @@ def add_annotations_plates(ome, imp_json):
                                 else:
                                     mmap.append(M(k=_key, value=''))
                             ann, annref = create_kv_and_ref(
-                                id=f"Annotation:{ann_count}", ns=CURRENT_MD_NS,
-                                value=Map(m=mmap))
+                                id=f"Annotation:{ann_count}",
+                                namespace=CURRENT_MD_NS,
+                                value=Map(ms=mmap))
                             ann_count += 1
                             newome.structured_annotations.append(ann)
                             pl.annotation_ref.append(annref)
