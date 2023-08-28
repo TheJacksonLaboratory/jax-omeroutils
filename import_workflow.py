@@ -42,12 +42,13 @@ def retrieve_fileset(stdoutval, target, datauser, datagroup):
 
 def edit_xml(target, datauser, datagroup):
     ome = from_xml(str(pathlib.Path(target) / "transfer.xml"))
+    print("ome before editing")
+    print(ome)
     with open(str(pathlib.Path(target) / "import.json"), "r") as fp:
         imp_json = json.load(fp)
     ome = add_projects_datasets(ome, imp_json)
     ome = add_screens(ome, imp_json)
     ome = add_annotations(ome, imp_json)
-    print(ome) 
     ome = move_objects(ome, imp_json)
     with open(str(pathlib.Path(target) / "transfer.xml"), "w") as fp:
         print(to_xml(ome), file=fp)
