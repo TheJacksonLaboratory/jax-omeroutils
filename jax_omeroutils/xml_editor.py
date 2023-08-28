@@ -169,12 +169,11 @@ def add_annotations_plates(ome, imp_json):
                             ann_count += 1
                             newome.structured_annotations.append(ann)
                             pl.annotation_ref.append(annref)
+            print(newome, line)
     return
 
 
 def move_objects(ome, imp_json):
-    print("in move objects")
-    print(ome)
     columns = list(imp_json['user_supplied_md']['file_metadata'][0].keys())
     if 'project' in columns:
         newome = move_images(ome, imp_json)
@@ -215,10 +214,7 @@ def move_images(ome, imp_json):
 
 
 def move_plates(ome, imp_json):
-    print("in move plates")
-    print(ome)
     newome = copy.deepcopy(ome)
-    print(newome)
     md = imp_json['user_supplied_md']['file_metadata']
     for line in md:
         scrname = line['screen']
