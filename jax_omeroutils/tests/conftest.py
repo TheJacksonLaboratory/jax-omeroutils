@@ -40,15 +40,17 @@ USERS_TO_CREATE = [
 
 def pytest_addoption(parser):
     parser.addoption("--omero-user", action="store",
-        default=os.environ.get("OMERO_USER", DEFAULT_OMERO_USER))
+                     default=os.environ.get("OMERO_USER", DEFAULT_OMERO_USER))
     parser.addoption("--omero-pass", action="store",
-        default=os.environ.get("OMERO_PASS", DEFAULT_OMERO_PASS))
+                     default=os.environ.get("OMERO_PASS", DEFAULT_OMERO_PASS))
     parser.addoption("--omero-host", action="store",
-        default=os.environ.get("OMERO_HOST", DEFAULT_OMERO_HOST))
+                     default=os.environ.get("OMERO_HOST", DEFAULT_OMERO_HOST))
     parser.addoption("--omero-port", action="store", type=int,
-        default=int(os.environ.get("OMERO_PORT", DEFAULT_OMERO_PORT)))
+                     default=int(os.environ.get("OMERO_PORT",
+                                                DEFAULT_OMERO_PORT)))
     parser.addoption("--omero-secure", action="store",
-        default=bool(os.environ.get("OMERO_SECURE", DEFAULT_OMERO_SECURE)))
+                     default=bool(os.environ.get("OMERO_SECURE",
+                                                 DEFAULT_OMERO_SECURE)))
 
 
 # we can change this later
@@ -59,7 +61,7 @@ def omero_params(request):
     host = request.config.getoption("--omero-host")
     port = request.config.getoption("--omero-port")
     secure = request.config.getoption("--omero-secure")
-    return(user, password, host, port, secure)
+    return (user, password, host, port, secure)
 
 
 @pytest.fixture(scope='session')

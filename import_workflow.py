@@ -90,7 +90,6 @@ def main(target, datauser, omerouser, logdir):
     print("stderr prep:", stderrval)
     fileset_list = retrieve_fileset(stdoutval, target,
                                     data_user_uid, data_user_gid)
-    
 
     # Run omero transfer prepare
     env_folder = pathlib.Path(sys.executable).parent
@@ -115,7 +114,7 @@ def main(target, datauser, omerouser, logdir):
         f = open(str(pathlib.Path(target) / "import.json"))
         f.close()
     except FileNotFoundError:
-        xml_path=""
+        xml_path = ""
         pass
     else:
         xml_path = edit_xml(target, data_user_uid, data_user_gid)

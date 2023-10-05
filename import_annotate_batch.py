@@ -7,8 +7,6 @@ import argparse
 import json
 from jax_omeroutils.config import OMERO_USER, OMERO_PASS
 from jax_omeroutils.config import OMERO_HOST, OMERO_PORT
-from jax_omeroutils.importer import Importer
-from omero.gateway import BlitzGateway
 from pathlib import Path
 import subprocess
 import sys
@@ -40,8 +38,7 @@ def main(import_md):
     print("stdout unpack:", stdoutval)
     print("stderr unpack:", stderrval)
 
-
-    # # Create user connection
+    # Create user connection
     # suconn = BlitzGateway(OMERO_USER,
     #                       OMERO_PASS,
     #                       host=OMERO_HOST,
@@ -50,12 +47,11 @@ def main(import_md):
     # suconn.connect()
     # conn = suconn.suConn(import_user, import_group, 2160000000)
     # suconn.close()
-    
+
     # # do I need a session key for conn? can I pass --sudo on transfer itself?
     # # you should be able to pass --sudo on transfer!
 
-
-    # # Import targets from import.json
+    # Import targets from import.json
     # for md in file_metadata:
     #     filename = md['filename']
     #     file_path = data_dir / filename

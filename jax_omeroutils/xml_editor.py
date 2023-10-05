@@ -85,7 +85,7 @@ def add_annotations(ome, imp_json):
         newome = add_annotations_plates(ome, imp_json)
         return newome
     return ome
-    
+
 
 def add_annotations_images(ome, imp_json):
     newome = copy.deepcopy(ome)

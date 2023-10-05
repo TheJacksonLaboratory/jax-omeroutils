@@ -61,11 +61,11 @@ def find_md_file(import_directory):
         if f.suffix.endswith('xlsx'):
             md_files.append(f)
     if len(md_files) == 0:
-        logger.error('No valid metadata file found - have you added an '+
+        logger.error('No valid metadata file found - have you added an ' +
                      'Excel spreadsheet to your files?')
         md_filepath = None
     elif len(md_files) > 1:
-        logger.error('>1 metadata files found, can not process. Is your '+
+        logger.error('>1 metadata files found, can not process. Is your ' +
                      'spreadsheet open? Please close it!')
         md_filepath = None
     else:
@@ -102,8 +102,8 @@ def load_md_from_file(md_filepath, sheet_name=0):
         logger.error(f'Cannot find file {md_filepath} - have you moved it?')
         raise FileNotFoundError(f'No such file: {md_filepath}')
     if md_filepath.suffix != '.xlsx':
-        logger.error('Only spreadsheets with xlsx extensions are accepted. '+
-                      'Please use our template for submission!')
+        logger.error('Only spreadsheets with xlsx extensions are accepted. ' +
+                     'Please use our template for submission!')
         raise ValueError('File suffix must be xlsx')
 
     try:
@@ -115,8 +115,8 @@ def load_md_from_file(md_filepath, sheet_name=0):
                                   dtype=str,
                                   engine="openpyxl")
     except ValueError:
-        logger.error('Your spreadsheet does not have a Submission Form sheet - '+
-                     'please use our template for submission!')
+        logger.error('Your spreadsheet does not have a Submission Form sheet' +
+                     ' - please use our template for submission!')
         raise ValueError(f"Worksheet {sheet_name} does not exist.")
     md = pd.read_excel(md_filepath,
                        sheet_name=sheet_name,
@@ -145,10 +145,10 @@ def load_md_from_file(md_filepath, sheet_name=0):
         md_json['omero_group'] = md_header.loc['OMERO group:', 1].strip()
         md_json['file_metadata'] = md.to_dict(orient='records')
     except KeyError:
-        logger.error("Your spreadsheet does not have 'OMERO user:' or "+
-                     "'OMERO group:' fields, or you have added your username/"+
-                     "group on the same cell as those fields! Please add them "+
-                     "on column B.")
+        logger.error("Your spreadsheet does not have 'OMERO user:' or " +
+                     "'OMERO group:' fields, or you have added your" +
+                     " username/group on the same cell as those fields! " +
+                     "Please add them on column B.")
         raise KeyError("User and group fields are non-existent or malformed.")
     return (md_json)
 
@@ -265,10 +265,10 @@ class ImportBatch:
                 userlist.extend(group_summary[1])
                 userlist = [u.getName() for u in userlist]
                 if user not in userlist:
-                    self.logger.error(f'User {user} is not in group {group} '+
-                                      f'and/or user {user} does not exist. '+
-                                      'Please double-check the spelling and '+
-                                      'note that usernames and group '+
+                    self.logger.error(f'User {user} is not in group {group} ' +
+                                      f'and/or user {user} does not exist. ' +
+                                      'Please double-check the spelling and ' +
+                                      'note that usernames and group ' +
                                       'names are case sensitive!')
                     raise ValueError('User non-existent or not in group.')
                 else:
@@ -277,9 +277,9 @@ class ImportBatch:
                     user_obj = self.conn.getObject('Experimenter', userid)
                     self.user_email = user_obj._obj.email._val
                     return True
-        self.logger.error(f'Group {group} was not found. Please double-check '+
-                          'the spelling and note that usernames and group '+
-                          'names are case sensitive!')
+        self.logger.error(f'Group {group} was not found. Please ' +
+                          'double-check the spelling and note that ' +
+                          'usernames and group names are case sensitive!')
         raise ValueError('group not found.')
 
     def set_server_path(self):
@@ -314,52 +314,53 @@ class ImportBatch:
         self.valid_md = True
         for filemd in self.md['file_metadata']:
             if 'filename' not in filemd.keys():
-                self.logger.error('Column \'filename\' is missing in your '+
+                self.logger.error('Column \'filename\' is missing in your ' +
                                   'spreadsheet!')
                 self.valid_md = False
                 return False
             elif (str(filemd['filename']) == '' or
                   str(filemd['filename']) == 'nan'):
-                self.logger.error('You have an empty filename in your '+
+                self.logger.error('You have an empty filename in your ' +
                                   'spreadsheet. Please double-check!')
                 self.valid_md = False
                 return False
 
             if 'dataset' not in filemd.keys():
                 if 'screen' not in filemd.keys():
-                    self.logger.error('You need either a \'dataset\' or a \'screen\''+
-                                  ' column in your spreadsheet!')
+                    self.logger.error('You need either a \'dataset\' ' +
+                                      'or a \'screen\' column in your' +
+                                      'spreadsheet!')
                     self.valid_md = False
                     return False
                 elif (str(filemd['screen']) == '' or
                       str(filemd['screen']) == 'nan'):
-                    self.logger.error('You have an empty screen name in '+
-                                  'your spreadsheet. Please double-check!')
+                    self.logger.error('You have an empty screen name in ' +
+                                      'your spreadsheet. Please double-check!')
                     self.valid_md = False
                     return False
 
             elif (str(filemd['dataset']) == '' or
                   str(filemd['dataset']) == 'nan'):
-                self.logger.error('You have an empty dataset name in '+
+                self.logger.error('You have an empty dataset name in ' +
                                   'your spreadsheet. Please double-check!')
                 self.valid_md = False
                 return False
 
             if 'project' not in filemd.keys():
                 if 'screen' not in filemd.keys():
-                    self.logger.error('You need either a \'project\' or a \'screen\''+
-                                  ' column in your spreadsheet!')
+                    self.logger.error('You need either a \'project\' or a ' +
+                                      '\'screen\' column in your spreadsheet!')
                     self.valid_md = False
                     return False
                 elif (str(filemd['screen']) == '' or
                       str(filemd['screen']) == 'nan'):
-                    self.logger.error('You have an empty screen name in '+
-                                  'your spreadsheet. Please double-check!')
+                    self.logger.error('You have an empty screen name in ' +
+                                      'your spreadsheet. Please double-check!')
                     self.valid_md = False
                     return False
             elif (str(filemd['project']) == '' or
                   str(filemd['project']) == 'nan'):
-                self.logger.error('You have an empty project name in '+
+                self.logger.error('You have an empty project name in ' +
                                   'your spreadsheet. Please double-check!')
                 self.valid_md = False
                 return False
@@ -367,7 +368,7 @@ class ImportBatch:
         # Check for duplicate filenames in metadata
         file_list_md = [f['filename'] for f in self.md['file_metadata']]
         if len(set(file_list_md)) < len(file_list_md):
-            self.logger.error('Spreadsheet contains duplicate filenames. '+
+            self.logger.error('Spreadsheet contains duplicate filenames. ' +
                               'Please double-check!')
             self.valid_md = False
             return False
@@ -382,16 +383,16 @@ class ImportBatch:
             if imp_target.exists:
                 imp_target.validate_target()
             else:
-                err = f'Target does not exist: {imp_target.path_to_target}. '+\
-                      'This file is in your spreadsheet but not in your '+\
-                      'folder, and will not be imported.'
+                err = f'Target does not exist: {imp_target.path_to_target}. '\
+                      + 'This file is in your spreadsheet but not in your '\
+                      + 'folder, and will not be imported.'
                 self.logger.error(err)
             if imp_target.valid_target is True:
                 self.import_target_list.append(imp_target)
             elif imp_target.valid_target is False:
-                err = ('Target can not be imported'+
-                       f' by OMERO: {imp_target.path_to_target}. File might be '+
-                       'corrupted or invalid. Skipping.')
+                err = ('Target can not be imported' +
+                       f' by OMERO: {imp_target.path_to_target}. File ' +
+                       'might be corrupted or invalid. Skipping.')
                 self.logger.error(err)
 
     def write_json(self):
@@ -400,16 +401,16 @@ class ImportBatch:
         mandatory = [self.user, self.group, self.user_email,
                      self.md, self.server_path]
         if None in mandatory:
-            self.logger.error("Cannot write import.json, missing or wrong "+
-                              "information in one of the following items: "+
+            self.logger.error("Cannot write import.json, missing or wrong " +
+                              "information in one of the following items: " +
                               "username, group, metadata spreadsheet")
             return False
         elif self.valid_md is False:
-            self.logger.error("Cannot write import.json, metadata "+
+            self.logger.error("Cannot write import.json, metadata " +
                               "spreadsheet contains invalid values.")
             return False
         elif len(self.import_target_list) == 0:
-            self.logger.error("Cannot write import.json, no valid "+
+            self.logger.error("Cannot write import.json, no valid " +
                               "import targets. Skipping empty import.")
             return False
         else:

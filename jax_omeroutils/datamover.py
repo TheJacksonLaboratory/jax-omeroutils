@@ -37,7 +37,8 @@ def file_mover(file_path, destination_dir, tries=3):
     ersatz_file = destination_dir / 'test.tiff'
     if file_path.exists():
         for i in range(tries):
-            os.makedirs(os.path.dirname(ersatz_file), mode=DIR_PERM, exist_ok=True)
+            os.makedirs(os.path.dirname(ersatz_file), mode=DIR_PERM,
+                        exist_ok=True)
             if destination_dir.exists():
                 shutil.copy(file_path, destination_dir)
                 dest_file = destination_dir / file_path.name
@@ -46,7 +47,8 @@ def file_mover(file_path, destination_dir, tries=3):
                     return str(dest_file)
                 else:
                     fp = str(file_path)
-                    err = f"checksum failed after copy attempt {i + 1} for {fp}"
+                    err = f"checksum failed after copy attempt {i + 1} \
+                          for {fp}"
                     logger.error(err)
                     os.remove(dest_file)
     logger.error(f"Unable to copy {str(file_path)}")
@@ -104,7 +106,7 @@ class DataMover:
         # Move import targets first
         # for target in self.import_targets:
         #     src_fp = self.import_path / target['filename']
-        #     subfolder = target['filename'].rsplit('/',1)
+        #     subfolder = target['filename'].rsplit('/', 1)
         #     if len(subfolder) > 1:
         #         subfolder_path = self.server_path / subfolder[0]
         #     else:
@@ -113,8 +115,8 @@ class DataMover:
         #     result = file_mover(src_fp, subfolder_path)
         #     if result is not None:
         #         print(f'Main file moved to {result}')
-        #         self.logger.debug(f'Success moving file {file} to '+
-        #                           f'the server. It will be imported.')
+        #         self.logger.debug(f'Success moving file {file} to ' +
+        #                           'the server. It will be imported.')
         #         os.chmod(result, FILE_PERM)
 
         for target in self.fileset_list:
@@ -123,13 +125,13 @@ class DataMover:
             src_fp = Path(src_fp)
             if src_fp.suffix == '.log' or src_fp.suffix == '.xlsx':
                 continue
-            subfolder = subfolder_file.rsplit('/',1)
+            subfolder = subfolder_file.rsplit('/', 1)
             if len(subfolder) > 1:
                 subfolder_path = self.server_path / subfolder[0].lstrip('/')
             else:
                 subfolder_path = self.server_path
-            #need to get the file subfolder structure here and
-            #append to server_path
+            # need to get the file subfolder structure here and
+            # append to server_path
             result = file_mover(src_fp, subfolder_path)
             if result is not None:
                 self.logger.debug(f'Success moving file {src_fp} to ' +
@@ -141,16 +143,16 @@ class DataMover:
             result = file_mover(self.xml_path, self.server_path)
             if result:
                 os.chmod(result, FILE_PERM)
-            else: 
+            else:
                 result = self.server_path / 'transfer.xml'
             if result is not None:
                 print(f'XML file moved to {result}')
-        
+
         # Move import.json
         result = file_mover(self.import_json_path, self.server_path)
         if result:
             os.chmod(result, FILE_PERM)
-        else: 
+        else:
             result = self.server_path / 'import.json'
         return f'Ready for import at:{result}'
 
