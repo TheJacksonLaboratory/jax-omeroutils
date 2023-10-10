@@ -31,7 +31,6 @@ while [ "$#" -gt 0 ]; do
 
 done
 folder="$1"; shift 1;
-echo $folder
 # need to change into a folder where sudo has permission - using folder where script is
 cd "$(dirname "$0")"
 

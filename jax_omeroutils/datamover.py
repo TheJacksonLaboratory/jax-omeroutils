@@ -103,6 +103,7 @@ class DataMover:
         # Prepare destination
         self.server_path.mkdir(mode=DIR_PERM, parents=True, exist_ok=True)
 
+        # LEGACY CODE 
         # Move import targets first
         # for target in self.import_targets:
         #     src_fp = self.import_path / target['filename']

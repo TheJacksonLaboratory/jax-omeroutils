@@ -38,6 +38,7 @@ def main(import_md):
     print("stdout unpack:", stdoutval)
     print("stderr unpack:", stderrval)
 
+    # LEGACY CODE
     # Create user connection
     # suconn = BlitzGateway(OMERO_USER,
     #                       OMERO_PASS,
