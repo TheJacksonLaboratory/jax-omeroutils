@@ -130,9 +130,19 @@ def load_md_from_file(md_filepath, sheet_name=0):
     if 'project' in md.columns:
         md = md.dropna(subset=['filename', 'project', 'dataset'])\
              .dropna(axis='columns', how='all')
+        if md.empty:
+            logger.error('Your spreadsheet rows need to contain ' +
+                         'filename, project and dataset names. Cannot ' +
+                         'proceed with import.')
+            raise ValueError('Spreadsheet needs filename, project and dataset')
     elif 'screen' in md.columns:
         md = md.dropna(subset=['filename', 'screen'])\
              .dropna(axis='columns', how='all')
+        if md.empty:
+            logger.error('Your spreadsheet rows need to contain ' +
+                         'filename and screen names. Cannot ' +
+                         'proceed with import.')
+            raise ValueError('Spreadsheet needs filename and screen')
 
     # protect against extra spaces on 'omero user' and 'omero group'
     md_header.index = md_header.index.str.strip()
