@@ -35,7 +35,7 @@ def create_kv_and_ref(**kwargs):
 def add_projects_datasets(ome, imp_json):
     newome = copy.deepcopy(ome)
     columns = imp_json['user_supplied_md']['file_metadata'][0].keys()
-    if 'project' not in columns:
+    if ('project' not in columns) or ('dataset' not in columns):
         return ome
     else:
         md = imp_json['user_supplied_md']['file_metadata']
