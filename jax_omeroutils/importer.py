@@ -259,7 +259,7 @@ class Importer:
                 )
             self.image_ids = [r[0].val for r in results]
             return self.image_ids
-    
+
     def get_plate_ids(self):
         """Get the Ids of imported plates.
 

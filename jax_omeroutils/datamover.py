@@ -37,7 +37,8 @@ def file_mover(file_path, destination_dir, tries=3):
     ersatz_file = destination_dir / 'test.tiff'
     if file_path.exists():
         for i in range(tries):
-            os.makedirs(os.path.dirname(ersatz_file), mode=DIR_PERM, exist_ok=True)
+            os.makedirs(os.path.dirname(ersatz_file), mode=DIR_PERM,
+                        exist_ok=True)
             if destination_dir.exists():
                 shutil.copy(file_path, destination_dir)
                 dest_file = destination_dir / file_path.name
@@ -46,7 +47,8 @@ def file_mover(file_path, destination_dir, tries=3):
                     return str(dest_file)
                 else:
                     fp = str(file_path)
-                    err = f"checksum failed after copy attempt {i + 1} for {fp}"
+                    err = f"checksum failed after copy attempt {i + 1} \
+                          for {fp}"
                     logger.error(err)
                     os.remove(dest_file)
     logger.error(f"Unable to copy {str(file_path)}")
@@ -77,10 +79,11 @@ class DataMover:
         into OMERO and hence moved.
     """
 
-    def __init__(self, import_json_path, fileset_list_path):
+    def __init__(self, import_json_path, fileset_list_path, xml_path):
         self.logger = logging.getLogger('datamover')
         self.import_json_path = Path(import_json_path)
         self.fileset_list_path = Path(fileset_list_path)
+        self.xml_path = Path(xml_path)
 
         if not self.import_json_path.exists():
             raise FileNotFoundError('import.json not found')
@@ -94,27 +97,28 @@ class DataMover:
                 self.fileset_list = f_list.readlines()
         self.import_path = Path(self.import_json['import_path'])
         self.server_path = Path(self.import_json['server_path'])
-        self.import_targets = self.import_json['import_targets']
+        # self.import_targets = self.import_json['import_targets']
 
     def move_data(self):
         # Prepare destination
         self.server_path.mkdir(mode=DIR_PERM, parents=True, exist_ok=True)
 
+        # LEGACY CODE 
         # Move import targets first
-        for target in self.import_targets:
-            src_fp = self.import_path / target['filename']
-            subfolder = target['filename'].rsplit('/',1)
-            if len(subfolder) > 1:
-                subfolder_path = self.server_path / subfolder[0]
-            else:
-                subfolder_path = self.server_path
-            file = str(target['filename'])
-            result = file_mover(src_fp, subfolder_path)
-            if result is not None:
-                print(f'Main file moved to {result}')
-                self.logger.debug(f'Success moving file {file} to '+
-                                  f'the server. It will be imported.')
-                os.chmod(result, FILE_PERM)
+        # for target in self.import_targets:
+        #     src_fp = self.import_path / target['filename']
+        #     subfolder = target['filename'].rsplit('/', 1)
+        #     if len(subfolder) > 1:
+        #         subfolder_path = self.server_path / subfolder[0]
+        #     else:
+        #         subfolder_path = self.server_path
+        #     file = str(target['filename'])
+        #     result = file_mover(src_fp, subfolder_path)
+        #     if result is not None:
+        #         print(f'Main file moved to {result}')
+        #         self.logger.debug(f'Success moving file {file} to ' +
+        #                           'the server. It will be imported.')
+        #         os.chmod(result, FILE_PERM)
 
         for target in self.fileset_list:
             src_fp = target.strip()
@@ -122,23 +126,34 @@ class DataMover:
             src_fp = Path(src_fp)
             if src_fp.suffix == '.log' or src_fp.suffix == '.xlsx':
                 continue
-            subfolder = subfolder_file.rsplit('/',1)
+            subfolder = subfolder_file.rsplit('/', 1)
             if len(subfolder) > 1:
                 subfolder_path = self.server_path / subfolder[0].lstrip('/')
             else:
                 subfolder_path = self.server_path
-            #need to get the file subfolder structure here and
-            #append to server_path
+            # need to get the file subfolder structure here and
+            # append to server_path
             result = file_mover(src_fp, subfolder_path)
             if result is not None:
-                print(f'Auxiliary file moved to {result}')
+                self.logger.debug(f'Success moving file {src_fp} to ' +
+                                  'the server. It will be imported.')
                 os.chmod(result, FILE_PERM)
+
+        # move transfer.xml
+        if self.xml_path:
+            result = file_mover(self.xml_path, self.server_path)
+            if result:
+                os.chmod(result, FILE_PERM)
+            else:
+                result = self.server_path / 'transfer.xml'
+            if result is not None:
+                print(f'XML file moved to {result}')
 
         # Move import.json
         result = file_mover(self.import_json_path, self.server_path)
         if result:
             os.chmod(result, FILE_PERM)
-        else: 
+        else:
             result = self.server_path / 'import.json'
         return f'Ready for import at:{result}'
 

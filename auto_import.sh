@@ -40,7 +40,6 @@ cd "$(dirname "$0")"
 arguments="$*"
 # check for folders last modified more than 60 mins ago
 sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin +60 | while read dir; do 
-
     skip=false
     if [ "$exclude" ]; then
         for exc in $(cat $exclude); do
@@ -68,7 +67,7 @@ sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin +60 | while r
         #check whether folder is "empty" now
         empty=false
         allfiles=$(sudo -u $user find "$dir" -mindepth 1 -maxdepth 1 -type f | wc -l)
-        nonimages=$(sudo -u $user find "$dir" -mindepth 1 -maxdepth 1 -regex ".*\.\(xlsx\|csv\|log\|json\|db\|ini\|txt\)" -type f | wc -l)
+        nonimages=$(sudo -u $user find "$dir" -mindepth 1 -maxdepth 1 -regex ".*\.\(xlsx\|csv\|log\|json\|db\|ini\|txt\|xml\)" -type f | wc -l)
         echo "Folder has $allfiles files left, of which $nonimages are typical non-images."
         if [ $allfiles -eq $nonimages ]; then
             empty=true

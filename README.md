@@ -4,6 +4,11 @@ A package for working with OMERO by ResearchIT at The Jackson Laboratory.
 
 This repository also contains scripts that use jax-omeroutils for managing commons tasks.
 
+# requirements
+
+In addition to the requirements in `requirements.txt`, due to the fact that we use `omero transfer prepare`,
+you need to have `bftools`. The easiest way to install that is `conda install -c bioconda bftools`.
+
 
 ## A note on plates
 

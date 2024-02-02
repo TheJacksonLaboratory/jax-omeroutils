@@ -5,7 +5,13 @@ import pwd
 import sys
 import grp
 import pathlib
+import json
+from jax_omeroutils.xml_editor import add_projects_datasets, add_screens
+from jax_omeroutils.xml_editor import add_annotations, move_objects
+from ome_types import from_xml, to_xml
 from datetime import datetime
+from jax_omeroutils.config import OMERO_USER, OMERO_PASS
+from jax_omeroutils.config import OMERO_HOST, OMERO_PORT
 
 
 def demote(user_uid, user_gid, homedir):
@@ -24,7 +30,7 @@ def retrieve_json(stdoutval):
     return json_path
 
 
-def retrieve_fileset(stdoutval, target):
+def retrieve_fileset(stdoutval, target, datauser, datagroup):
     lines = stdoutval.split('\n')
     files = [i for i in lines if ((not i.startswith('#')) and (i != ''))]
     filelist_path = pathlib.Path(target) / 'moved_files.txt'
@@ -32,6 +38,24 @@ def retrieve_fileset(stdoutval, target):
         f.write("\n".join(files))
         f.close()
     return filelist_path
+
+
+def edit_xml(target, datauser, datagroup):
+    ome = from_xml(str(pathlib.Path(target) / "transfer.xml"))
+    with open(str(pathlib.Path(target) / "import.json"), "r") as fp:
+        imp_json = json.load(fp)
+    ome = add_projects_datasets(ome, imp_json)
+    ome = add_screens(ome, imp_json)
+    ome = add_annotations(ome, imp_json)
+    print("before move objects")
+    print(ome)
+    ome = move_objects(ome, imp_json)
+    print("after move objects")
+    print(ome)
+    print(to_xml(ome))
+    with open(str(pathlib.Path(target) / "transfer.xml"), "w") as fp:
+        print(to_xml(ome), file=fp)
+    return str(pathlib.Path(target) / "transfer.xml")
 
 
 def main(target, datauser, omerouser, logdir):
@@ -64,10 +88,42 @@ def main(target, datauser, omerouser, logdir):
     stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
     print("stdout prep:", stdoutval)
     print("stderr prep:", stderrval)
-    fileset_list = retrieve_fileset(stdoutval, target)
+    fileset_list = retrieve_fileset(stdoutval, target,
+                                    data_user_uid, data_user_gid)
+
+    # Run omero transfer prepare
+    env_folder = pathlib.Path(sys.executable).parent
+    omero_path = str(env_folder / "omero")
+    filelist = str(pathlib.Path(target) / 'filelist.txt')
+    prepare = [omero_path, '-s', OMERO_HOST, '-p', str(OMERO_PORT),
+               '-u', OMERO_USER, '-w', OMERO_PASS,
+               'transfer', 'prepare', '--filelist', filelist,]
+    process = subprocess.Popen(prepare,
+                               preexec_fn=demote(data_user_uid,
+                                                 data_user_gid,
+                                                 data_user_home),
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE
+                               )
+    stdoutval, stderrval = process.communicate()
+    stdoutval, stderrval = stdoutval.decode('UTF-8'), stderrval.decode('UTF-8')
+    print("stdout prepare:", stdoutval)
+    print("stderr prepare:", stderrval)
+
+    try:
+        f = open(str(pathlib.Path(target) / "import.json"))
+        f.close()
+    except FileNotFoundError:
+        xml_path = ""
+        pass
+    else:
+        xml_path = edit_xml(target, data_user_uid, data_user_gid)
+
+    # Move data
 
     datamove = [sys.executable, curr_folder + '/move_data.py',
-                target, fileset_list, logdir, '--timestamp', timestamp]
+                target, fileset_list, xml_path, logdir, '--timestamp',
+                timestamp]
     process = subprocess.Popen(datamove,
                                preexec_fn=demote(data_user_uid,
                                                  data_user_gid,
@@ -80,6 +136,13 @@ def main(target, datauser, omerouser, logdir):
     json_path = retrieve_json(stdoutval)
     print("stdout move:", stdoutval)
     print("stderr move:", stderrval)
+    if pathlib.Path(filelist).exists():
+        os.remove(filelist)
+    if (pathlib.Path(target) / 'moved_files.txt').exists():
+        os.remove(pathlib.Path(target) / 'moved_files.txt')
+    if (pathlib.Path(target) / 'transfer.xml').exists():
+        os.remove(pathlib.Path(target) / 'transfer.xml')
+
     if json_path and pathlib.Path(json_path).exists():
         print(f'json path will be {json_path}')
         out_path = pathlib.Path(json_path).parent / (timestamp + ".out")
