@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="jax-omeroutils",
-    version="0.1.1",
+    version="0.1.2",
     maintainer="Dave Mellert",
     maintainer_email="Dave.Mellert@jax.org",
     description=("A package for working with OMERO"
@@ -15,12 +15,10 @@ setuptools.setup(
     url="https://github.com/TheJacksonLaboratory/jax-omeroutils",
     packages=setuptools.find_packages(),
     install_requires=[
-        'omero-py',
-        'pandas',
-        'numpy',
-        'openpyxl',
-        'ezomero',
-        'omero-cli-transfer'
+        'pandas>=1.1.5',
+        'numpy>=1.22.0,<2.0.0',
+        'openpyxl==3.0.9',
+        'omero-cli-transfer>=1.0.0,<1.1.0'
     ],
     python_requires='>=3.8'
 )
