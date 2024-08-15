@@ -103,8 +103,9 @@ sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin +60 | while r
                                 sudo -u $user cat "$logfile" && \
                                 echo "$empty_msg"
                                 ) > "$HOME"/temp_email_owner.txt
-                ssmtp $address_owner < "$HOME"/temp_email_owner.txt
-                err=$?
+                # ssmtp $address_owner < "$HOME"/temp_email_owner.txt
+                # err=$?
+		err = 0
                 tries=1
                 while [ $err -ne 0 ] && [ $tries -le $maxtries ]; do 
                     ssmtp $address_owner < "$HOME"/temp_email_owner.txt 
@@ -122,8 +123,9 @@ sudo -u $user find "$folder" -mindepth 1 -maxdepth 1 -type d -mmin +60 | while r
                                 sudo -u $user cat $logfile && \
                                 echo "$empty_msg"
                                 ) > "$HOME"/temp_email.txt
-            ssmtp $address < "$HOME"/temp_email.txt
-            err=$?
+            # ssmtp $address < "$HOME"/temp_email.txt
+            # err=$?
+	    err = 0
             tries=1
             while [ $err -ne 0 ] && [ $tries -le $maxtries ]; do 
                 ssmtp $address_owner < "$HOME"/temp_email_owner.txt 
