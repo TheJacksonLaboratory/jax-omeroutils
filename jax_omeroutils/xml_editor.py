@@ -189,24 +189,41 @@ def move_images(ome, imp_json):
         right_ds = []
         for proj in newome.projects:
             if projname == proj.name:
-                for dsref in proj.dataset_ref:
+                for dsref in proj.dataset_refs:
                     for ds in newome.datasets:
                         if dsref.id == ds.id and ds.name == dsname:
                             right_ds.append(ds.id)
         images = []
         filename = line['filename']
-        for ann in newome.structured_annotations:
-            if isinstance(ann, CommentAnnotation):
-                src_file = ann.value.split(sep)[-1]
-                if src_file == filename:
-                    images.append(ann.namespace)
-        for img in newome.images:
-            if img.id in images:
-                imgref = ImageRef(id=img.id)
-                for ds in newome.datasets:
+        ids = get_image_ids(filename, newome)
+        for imgid in ids:
+            imgref = ImageRef(id=imgid)
+            for ds in newome.datasets:
                     if ds.id in right_ds:
                         ds.image_ref.append(imgref)
     return newome
+
+
+def get_image_ids(filename, ome):
+    ann_ids = []
+    ids = []
+    print(filename)
+    for an_loop in ome.structured_annotations:
+        tree = ETree.fromstring(to_xml(an_loop.value,
+                                        canonicalize=True))
+        for el in tree:
+            if el.tag.rpartition('}')[2] == "CLITransferServerPath":
+                for el2 in el:
+                    if el2.tag.rpartition('}')[2] == "Path":
+                        fpath = el2.text
+                        if fpath == filename:
+                            ann_ids.append(an_loop.id)
+    for img in ome.images:
+        for annref in img.annotation_refs:
+            if annref.id in ann_ids:
+                ids.append(img.id)
+    print(ids)
+    return ids
 
 
 def move_plates(ome, imp_json):
