@@ -109,26 +109,22 @@ def add_annotations_images(ome, imp_json):
         ann_dict = {i: line[i] for i in columns}
         ann_dict.pop('filename')
         ann_dict = {k: v for k, v in ann_dict.items() if isinstance(v, str)}
-        for ann in ome.structured_annotations:
-            if isinstance(ann, CommentAnnotation):
-                src_file = ann.value.split(sep)[-1]
-                if src_file == filename:
-                    img_id = ann.namespace
-                    for i in newome.images:
-                        if i.id == img_id:
-                            mmap = []
-                            for _key, _value in ann_dict.items():
-                                if _value:
-                                    mmap.append(M(k=_key, value=str(_value)))
-                                else:
-                                    mmap.append(M(k=_key, value=''))
-                            kv, annref = create_kv_and_ref(
-                                id=f"Annotation:{ann_count}",
-                                namespace=CURRENT_MD_NS,
-                                value=Map(ms=mmap))
-                            ann_count += 1
-                            newome.structured_annotations.append(kv)
-                            i.annotation_ref.append(annref)
+        img_ids = get_image_ids(filename, ome)
+        for img in newome.images:
+            if img.id in img_ids:
+                mmap = []
+                for _key, _value in ann_dict.items():
+                    if _value:
+                        mmap.append(M(k=_key, value=str(_value)))
+                    else:
+                        mmap.append(M(k=_key, value=''))
+                kv, annref = create_kv_and_ref(
+                    id=f"Annotation:{ann_count}",
+                    namespace=CURRENT_MD_NS,
+                    value=Map(ms=mmap))
+                ann_count += 1
+                newome.structured_annotations.append(kv)
+                img.annotation_ref.append(annref)
     return newome
 
 
@@ -149,26 +145,22 @@ def add_annotations_plates(ome, imp_json):
         ann_dict = {i: line[i] for i in columns}
         ann_dict.pop('filename')
         ann_dict = {k: v for k, v in ann_dict.items() if isinstance(v, str)}
-        for ann in ome.structured_annotations:
-            if isinstance(ann, CommentAnnotation):
-                src_file = ann.value.split(sep)[-1]
-                if src_file == filename:
-                    pl_id = ann.namespace
-                    for pl in newome.plates:
-                        if pl.id == pl_id:
-                            mmap = []
-                            for _key, _value in ann_dict.items():
-                                if _value:
-                                    mmap.append(M(k=_key, value=str(_value)))
-                                else:
-                                    mmap.append(M(k=_key, value=''))
-                            kv, annref = create_kv_and_ref(
-                                id=f"Annotation:{ann_count}",
-                                namespace=CURRENT_MD_NS,
-                                value=Map(ms=mmap))
-                            ann_count += 1
-                            newome.structured_annotations.append(kv)
-                            pl.annotation_ref.append(annref)
+        pl_ids = get_plate_ids(filename, ome)
+        for pl in newome.plates:
+            if pl.id in pl_ids:
+                mmap = []
+                for _key, _value in ann_dict.items():
+                    if _value:
+                        mmap.append(M(k=_key, value=str(_value)))
+                    else:
+                        mmap.append(M(k=_key, value=''))
+                kv, annref = create_kv_and_ref(
+                    id=f"Annotation:{ann_count}",
+                    namespace=CURRENT_MD_NS,
+                    value=Map(ms=mmap))
+                ann_count += 1
+                newome.structured_annotations.append(kv)
+                pl.annotation_ref.append(annref)
     return newome
 
 
@@ -210,7 +202,6 @@ def move_images(ome, imp_json):
 def get_image_ids(filename, ome):
     ann_ids = []
     ids = []
-    print(filename)
     for an_loop in ome.structured_annotations:
         tree = ETree.fromstring(to_xml(an_loop.value,
                                         canonicalize=True))
@@ -225,14 +216,12 @@ def get_image_ids(filename, ome):
         for annref in img.annotation_refs:
             if annref.id in ann_ids:
                 ids.append(img.id)
-    print(ids)
     return ids
 
 
 def get_plate_ids(filename, ome):
     ann_ids = []
     ids = []
-    print(filename)
     for an_loop in ome.structured_annotations:
         tree = ETree.fromstring(to_xml(an_loop.value,
                                         canonicalize=True))
@@ -243,12 +232,10 @@ def get_plate_ids(filename, ome):
                         fpath = el2.text
                         if fpath == filename:
                             ann_ids.append(an_loop.id)
-    print(ann_ids)
     for pl in ome.plates:
         for annref in pl.annotation_refs:
             if annref.id in ann_ids:
                 ids.append(pl.id)
-    print(ids)
     return ids
 
 
