@@ -6,6 +6,8 @@ from ome_types.model import DatasetRef, AnnotationRef, ImageRef
 from ome_types.model.screen import PlateRef
 from ome_types.model import CommentAnnotation, Map
 from ome_types.model.map import M
+import xml.etree.cElementTree as ETree
+
 
 CURRENT_MD_NS = 'jax.org/omeroutils/user_submitted/v0'
 
