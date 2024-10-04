@@ -228,6 +228,29 @@ def get_image_ids(filename, ome):
     return ids
 
 
+def get_plate_ids(filename, ome):
+    ann_ids = []
+    ids = []
+    print(filename)
+    for an_loop in ome.structured_annotations:
+        tree = ETree.fromstring(to_xml(an_loop.value,
+                                        canonicalize=True))
+        for el in tree:
+            if el.tag.rpartition('}')[2] == "CLITransferServerPath":
+                for el2 in el:
+                    if el2.tag.rpartition('}')[2] == "Path":
+                        fpath = el2.text
+                        if fpath == filename:
+                            ann_ids.append(an_loop.id)
+    print(ann_ids)
+    for pl in ome.plates:
+        for annref in pl.annotation_refs:
+            if annref.id in ann_ids:
+                ids.append(pl.id)
+    print(ids)
+    return ids
+
+
 def move_plates(ome, imp_json):
     newome = copy.deepcopy(ome)
     md = imp_json['user_supplied_md']['file_metadata']
@@ -239,15 +262,10 @@ def move_plates(ome, imp_json):
                 right_scr.append(scr.id)
         plates = []
         filename = line['filename']
-        for ann in newome.structured_annotations:
-            if isinstance(ann, CommentAnnotation):
-                src_file = ann.value.split(sep)[-1]
-                if src_file == filename:
-                    plates.append(ann.namespace)
-        for pl in newome.plates:
-            if pl.id in plates:
-                plref = PlateRef(id=pl.id)
-                for scr in newome.screens:
+        ids = get_plate_ids(filename, newome)
+        for plid in ids:
+            plref = PlateRef(id=plid)
+            for scr in newome.screens:
                     if scr.id in right_scr:
-                        scr.plate_ref.append(plref)
+                        scr.plate_refs.append(plref)
     return newome
