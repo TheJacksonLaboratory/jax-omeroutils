@@ -24,11 +24,10 @@ def main(import_md):
     data_dir = Path(batch_md['server_path'])
 
     env_folder = Path(sys.executable).parent
-    omero_path = str(env_folder / "omero")
-    unpack = [omero_path, '-s', OMERO_HOST, '-p', str(OMERO_PORT),
-              '-u', import_user, '-w', OMERO_PASS, '-g', import_group,
-              '--sudo', OMERO_USER,
-              'transfer', 'unpack', '--ln_s', '--folder', data_dir, '--merge']
+    omero_path = "/opt/omero/server/server_venv/bin/omero"
+    kube_ns = "omero-prod"
+    kube_data_dir = str(data_dir).replace("/nfs/hyperfile", "/hyperfile")
+    unpack = ["kubectl", "exec", "--namespace", kube_ns, "omero-server", "--", "bash", "-c", f"{omero_path} -s {OMERO_HOST} -p {str(OMERO_PORT)} -u {import_user} -w {OMERO_PASS} -g '{import_group}' --sudo {OMERO_USER} transfer unpack --ln_s --folder '{kube_data_dir}' --merge"]
     process = subprocess.Popen(unpack,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE

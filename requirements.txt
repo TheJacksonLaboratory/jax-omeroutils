@@ -1,5 +1,4 @@
 pandas>=1.1.5
 numpy>=1.22.0,<2.0.0
-ezomero>=2.1.0,<3.0.0
 openpyxl==3.0.9
-omero-cli-transfer>=0.7.3,<1.0.0
+omero-cli-transfer>=1.0.0,<1.1.0

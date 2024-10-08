@@ -18,7 +18,7 @@ ImportControl = import_module("omero.plugins.import").ImportControl
 
 # This variable indicates the path in which new OMERO submissions will be
 # staged for "in-place" imports
-BASE_SERVER_PATH = pathlib.Path('/hyperfile/omero/autoimport/')
+BASE_SERVER_PATH = pathlib.Path('/nfs/hyperfile/omero/autoimport/')
 
 
 # Function definitions #
