@@ -160,6 +160,7 @@ def check_log(log_path, verbose=True):
 def check_logs(import_directory, image_filenames):
     """loop through all logs in directory and call check_log"""
     images_dict = dict.fromkeys(image_filenames, 0)
+    extra_images = []
     unknown_lines_all = []
     import_directory = pathlib.Path(import_directory)
     num_logs = 0
@@ -168,14 +169,15 @@ def check_logs(import_directory, image_filenames):
             num_logs += 1
             success_filenames, unknown_lines = check_log(f, image_filenames)
             for filename in success_filenames:
-                if filename not in images_dict:
-                    raise ValueError("Spreadsheet has been changed since importing file"+filename)
-                images_dict[filename] = images_dict[filename] + 1
+                if filename in images_dict:
+                    images_dict[filename] = images_dict[filename] + 1
+                else:
+                    extra_images.append(filename)
             unknown_lines_all = unknown_lines_all + unknown_lines
-    return num_logs, images_dict, unknown_lines_all
+    return num_logs, images_dict, extra_images, unknown_lines_all
 
 def prettyprint_check_logs(import_directory, image_filenames, verbose=False):
-    num_logs, images_dict, unknown_lines_all = check_logs(import_directory, image_filenames)
+    num_logs, images_dict, extra_images, unknown_lines_all = check_logs(import_directory, image_filenames)
     failed_image_count = 0
     if num_logs == 0:
         print("WAIT: There are no logs yet")
@@ -188,6 +190,15 @@ def prettyprint_check_logs(import_directory, image_filenames, verbose=False):
     unknown_lines_count = Counter(unknown_lines_all)
     for unknown_line in unknown_lines_count.keys():
         print("WARNING: \"{}\" received {} times".format(unknown_line, unknown_lines_count[unknown_line]))
+    extra_image_extensions = set()
+    for extra_image in extra_images:
+        extra_split = extra_image.split(".")
+        if len(extra_split) > 1:
+            extra_image_extensions.add(extra_split[-1])
+        else:
+            extra_image_extensions.add("None")
+    if extra_images:
+        print("WARNING: {} extra images moved to hyperfile with extensions {}".format(len(extra_images),", ".join(extra_image_extensions)))
     if failed_image_count == 0:
         print("GOOD: All images from spreadsheet moved to hyperfile")
         return True
@@ -216,48 +227,61 @@ def get_image_names(conn, project_name, dataset_name):
 
 def check_omero(md_df, omero_group):
     all_zero = True
-    image_results = []
+    image_counts = []
     conn = ezomero.connect(group=omero_group)
     for index, row in md_df.iterrows():
         images_in_dataset = get_image_names(conn, row["project"], row["dataset"])
         if len(images_in_dataset) != 0: all_zero = False
-        found_image = False
+        this_image_count = 0
         for imagename in images_in_dataset:
             if imagename.startswith(row["filename"]):
-                found_image = True
-                break
-        image_results.append(found_image)
+                this_image_count += 1
+        image_counts.append(this_image_count)
     if all_zero == True:
         print("WARNING: all HQL queries returned no values - please check OMERO credentials and connect using an admin account")
     conn.close()
-    return image_results
+    return image_counts
 
 def prettyprint_check_omero(md_df, omero_group, verbose=False):
-    image_results = check_omero(md_df, omero_group)
-    print("Images intented for group {}".format(omero_group))
-    if all(image_results):
-        print("GOOD: All images found in OMERO")
+    image_counts = check_omero(md_df, omero_group)
+    unique_image_counts = sorted(set(image_counts))
+    string_positive_counts = ", ".join([str(x) for x in unique_image_counts if x!=0])
+    if 0 not in unique_image_counts:
+        print("GOOD: All images found in OMERO, images per file: {}".format(string_positive_counts))
         return True
     else:
-        num_fail = sum([not x for x in image_results])
+        num_fail = sum([x==0 for x in image_counts])
         print("BAD: {} images not found in OMERO".format(num_fail))
+        if num_fail != len(image_counts):
+            print("\t however, {} images found in OMERO, images per file: {}".format(len(image_counts)-num_fail,string_positive_counts))
         if verbose:
-            for i in range(len(image_results)):
-                if not image_results[i]:
+            for i in range(len(image_counts)):
+                if not image_counts[i]:
                     print("BAD: {} not found in OMERO".format(md_df["filename"][i]))
         return False
     
 def check_remaining_images(import_directory, verbose=False):
     import_directory = pathlib.Path(import_directory)
     remaining_images = []
-    for f in import_directory.iterdir():
-        if not f.suffix.endswith(("log","xlsx","csv")) and f.name != ".DS_Store":
-            remaining_images.append(f.name)
+    remaining_directories = []
+    for remaining_path in import_directory.rglob("*"):
+        if remaining_path.is_dir():
+            remaining_directories.append(remaining_path)
+        else:
+            if not remaining_path.suffix.endswith(("log","xlsx","csv")) and remaining_path.name != ".DS_Store":
+                remaining_images.append(remaining_path.name)
+    if remaining_directories:
+        if verbose:
+            print("WARNING: The following remaining directories were discovered:")
+            for dirpath in remaining_directories:
+                print("\t"+dirpath.name)
+        else:
+            print("WARNING: Discovered {} remaining directories".format(len(remaining_directories)))
     if remaining_images:
         if verbose:
             print("BAD: The following remaining images were discovered:")
-            for f in remaining_images:
-                print("\t"+f)
+            for imgpath in remaining_images:
+                print("\t"+imgpath.name)
         else:
             print("BAD: Discovered {} remaining images".format(len(remaining_images)))
         return False
@@ -267,7 +291,15 @@ def check_directory(import_directory, verbose=False):
     """Loop through all files in folder, checking for log files, remaining image files, and Excel spreadsheet"""
     md_df, omero_user, omero_group = load_md_from_file(find_md_file(import_directory), sheet_name="Submission Form")
     image_filenames = md_df["filename"].tolist()
-    print("Found {} images in spreadsheet".format(len(image_filenames)))
+    image_extensions = set()
+    for filename in image_filenames:
+        filename_split = filename.split(".")
+        if len(filename_split) > 1:
+            image_extensions.add(filename_split[-1])
+        else:
+            image_extensions.add("None")
+    print("OMERO group: {}, OMERO user: {}".format(omero_group, omero_user))
+    print("Found {} images with extensions {} in spreadsheet".format(len(image_filenames), ", ".join(image_extensions)))
     logs_good = prettyprint_check_logs(import_directory, image_filenames, verbose=verbose)
     omero_good = prettyprint_check_omero(md_df, omero_group, verbose=verbose)
     remaining_good = check_remaining_images(import_directory, verbose=verbose)
