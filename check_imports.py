@@ -16,6 +16,9 @@ import argparse
 # pip install pandas==2.2.3 numpy==1.26.4 openpyxl==3.1.2 omero-cli-transfer==1.0.1
 # Above packages are current to importer env as of Jan 6, 2025
 
+# export OMERO_PASS=<admin_account_password>
+# python ./check_imports.py --dir /Volumes/omero-drop/dropbox
+
 def find_md_file(import_directory):
     """Finds the xlsx file for importing OMERO metadata.
     Adapted from jax-omeroutils.intake without logging.
@@ -229,6 +232,9 @@ def check_omero(md_df, omero_group):
     all_zero = True
     image_counts = []
     conn = ezomero.connect(group=omero_group)
+    if conn == None:
+        print("BAD: OMERO login didn't work, likely incorrect group name")
+        return([0]*md_df.shape[0])
     for index, row in md_df.iterrows():
         images_in_dataset = get_image_names(conn, row["project"], row["dataset"])
         if len(images_in_dataset) != 0: all_zero = False
@@ -268,7 +274,9 @@ def check_remaining_images(import_directory, verbose=False):
         if remaining_path.is_dir():
             remaining_directories.append(remaining_path)
         else:
-            if not remaining_path.suffix.endswith(("log","xlsx","csv")) and remaining_path.name != ".DS_Store":
+            if not remaining_path.suffix.endswith(("log","xlsx","csv")) \
+                and remaining_path.name != ".DS_Store" \
+                and remaining_path.name != "metadata.json":
                 remaining_images.append(remaining_path.name)
     if remaining_directories:
         if verbose:
@@ -280,14 +288,14 @@ def check_remaining_images(import_directory, verbose=False):
     if remaining_images:
         if verbose:
             print("BAD: The following remaining images were discovered:")
-            for imgpath in remaining_images:
-                print("\t"+imgpath.name)
+            for imgname in remaining_images:
+                print("\t"+imgname)
         else:
             print("BAD: Discovered {} remaining images".format(len(remaining_images)))
         return False
     return True
 
-def check_directory(import_directory, verbose=False):
+def check_directory(import_directory, verbose=False, print_md=False):
     """Loop through all files in folder, checking for log files, remaining image files, and Excel spreadsheet"""
     md_df, omero_user, omero_group = load_md_from_file(find_md_file(import_directory), sheet_name="Submission Form")
     image_filenames = md_df["filename"].tolist()
@@ -300,6 +308,11 @@ def check_directory(import_directory, verbose=False):
             image_extensions.add("None")
     print("OMERO group: {}, OMERO user: {}".format(omero_group, omero_user))
     print("Found {} images with extensions {} in spreadsheet".format(len(image_filenames), ", ".join(image_extensions)))
+    if print_md:
+        column_names = [x for x in ["filename","dataset","project"] if x in md_df.columns]
+        print(", ".join(column_names))
+        for i in range(md_df.shape[0]):
+            print(", ".join(md_df.iloc[i][column_names].tolist()))
     logs_good = prettyprint_check_logs(import_directory, image_filenames, verbose=verbose)
     omero_good = prettyprint_check_omero(md_df, omero_group, verbose=verbose)
     remaining_good = check_remaining_images(import_directory, verbose=verbose)
@@ -325,4 +338,4 @@ if __name__ == "__main__":
     if dirpath.name == "dropbox":
         check_all_directories(args.dir, args.verbose)
     else:
-        check_directory(args.dir, args.verbose)
+        check_directory(args.dir, args.verbose, args.verbose)
