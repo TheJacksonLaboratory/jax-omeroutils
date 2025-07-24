@@ -8,7 +8,7 @@ import ezomero
 from omero.sys import Parameters
 from omero.rtypes import rstring
 import argparse
-from config.py import OMERO_HOST, OMERO_PORT, OMERO_USER, OMERO_PASS # for use on ctome02ld.jax.org
+from config import OMERO_HOST, OMERO_PORT, OMERO_USER, OMERO_PASS # for use on ctome02ld.jax.org
 
 # Created for svc-import at /opt/miniforge
 # conda create -n omeroutils python=3.9
