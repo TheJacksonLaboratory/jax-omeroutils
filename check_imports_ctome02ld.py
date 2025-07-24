@@ -341,6 +341,8 @@ def check_all_directories(dropbox_path, verbose=False):
 
 if __name__ == "__main__":
     print(OMERO_HOST, OMERO_PORT, OMERO_USER, OMERO_PASS)
+    conn = ezomero.connect(group=omero_group, host=OMERO_HOST, port=OMERO_PORT, user=OMERO_USER, password=OMERO_PASS)
+    print(conn)
     # parser = argparse.ArgumentParser(description='Check OMERO import directory logs')
     # parser.add_argument('--dir', help='Directory path to check, if ends in "dropbox" will loop through subdirectories', required=True)
     # parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output')
