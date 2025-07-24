@@ -235,7 +235,7 @@ def get_image_names(conn, project_name, dataset_name):
 def check_omero(md_df, omero_group):
     all_zero = True
     image_counts = []
-    conn = ezomero.connect(group=omero_group, host=OMERO_HOST, port=OMERO_PORT, user=OMERO_USER, password=OMERO_PASS)
+    conn = ezomero.connect(group=omero_group, host=OMERO_HOST, port=OMERO_PORT, user=OMERO_USER, password=OMERO_PASS, secure=True)
     if conn == None:
         print("BAD: OMERO login didn't work, likely incorrect group name")
         return([0]*md_df.shape[0])
@@ -338,19 +338,17 @@ def check_all_directories(dropbox_path, verbose=False):
             print("Checking import directory "+dirname)
             check_directory(dirpath, verbose=verbose)
             print("")
+        break
 
 if __name__ == "__main__":
-    print(OMERO_HOST, OMERO_PORT, OMERO_USER, OMERO_PASS)
-    conn = ezomero.connect(group=omero_group, host=OMERO_HOST, port=OMERO_PORT, user=OMERO_USER, password=OMERO_PASS)
-    print(conn)
-    # parser = argparse.ArgumentParser(description='Check OMERO import directory logs')
-    # parser.add_argument('--dir', help='Directory path to check, if ends in "dropbox" will loop through subdirectories', required=True)
-    # parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output')
-    # args = parser.parse_args()
-    # dirpath = pathlib.Path(args.dir)
-    # if not dirpath.exists():
-    #     raise FileNotFoundError("Provided directory path to check does not exist. Make sure you map the volume first.")
-    # if dirpath.name == "dropbox":
-    #     check_all_directories(args.dir, args.verbose)
-    # else:
-    #     check_directory(args.dir, args.verbose, args.verbose)
+    parser = argparse.ArgumentParser(description='Check OMERO import directory logs')
+    parser.add_argument('--dir', help='Directory path to check, if ends in "dropbox" will loop through subdirectories', required=True)
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output')
+    args = parser.parse_args()
+    dirpath = pathlib.Path(args.dir)
+    if not dirpath.exists():
+        raise FileNotFoundError("Provided directory path to check does not exist. Make sure you map the volume first.")
+    if dirpath.name == "dropbox":
+        check_all_directories(args.dir, args.verbose)
+    else:
+        check_directory(args.dir, args.verbose, args.verbose)
