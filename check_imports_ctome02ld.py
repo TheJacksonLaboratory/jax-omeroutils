@@ -20,8 +20,8 @@ from config import OMERO_HOST, OMERO_PORT, OMERO_USER, OMERO_PASS # for use on c
 
 # sudo su svc-import
 # conda activate omeroutils
-# python /opt/jax-omeroutils-check/check_imports.py --dir /nfs/dropbox/dropbox
-# python /opt/jax-omeroutils-check/check_imports.py --dir /nfs/dropbox/dropbox/<folder> -v
+# python /opt/jax-omeroutils-check/check_imports_ctome02ld.py --dir /nfs/dropbox/dropbox
+# python /opt/jax-omeroutils-check/check_imports_ctome02ld.py --dir /nfs/dropbox/dropbox/<folder> -v
 
 def find_md_file(import_directory):
     """Finds the xlsx file for importing OMERO metadata.
@@ -338,7 +338,6 @@ def check_all_directories(dropbox_path, verbose=False):
             print("Checking import directory "+dirname)
             check_directory(dirpath, verbose=verbose)
             print("")
-        break
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Check OMERO import directory logs')
