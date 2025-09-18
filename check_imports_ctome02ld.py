@@ -127,6 +127,8 @@ def load_md_from_file(md_filepath, sheet_name=0):
              .dropna(axis='columns', how='all')
         if md.empty:
             raise ValueError('Spreadsheet needs filename and screen')
+    else:
+        raise(ValueError('Spreadsheet must contain either project or screen column'))
 
     # protect against extra spaces on 'omero user' and 'omero group'
     md_header.index = md_header.index.str.strip()
