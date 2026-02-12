@@ -304,7 +304,28 @@ def check_remaining_images(import_directory, verbose=False):
         return False
     return True
 
-def check_directory(import_directory, verbose=False, print_md=False):
+def rename_directory(dirpath, prefix="_donetodelete_"):
+    dirpath = pathlib.Path(dirpath)
+    new_dirname = dirpath.name
+    if not new_dirname.startswith(prefix):
+        new_dirname = prefix + new_dirname
+        print("Renaming folder {}".format(new_dirname))
+    else:
+        print("Skipping rename as folder already starts with prefix")
+    new_dirpath = os.path.join(dirpath.parent, new_dirname)
+    os.rename(dirpath, new_dirpath)
+
+def get_owner(dirpath):
+    """Gets owner username of directory at path, or ID if no username available"""
+    try:
+        dirpath_obj = pathlib.Path(dirpath)
+        owner_name = dirpath_obj.owner()
+        return owner_name
+    except: # no name for uid
+        owner_id = os.stat(dirpath_obj).st_uid
+        return owner_id
+
+def check_directory(import_directory, verbose=False, print_md=False, move=False):
     """Loop through all files in folder, checking for log files, remaining image files, and Excel spreadsheet"""
     try:
         md_df, omero_user, omero_group = load_md_from_file(find_md_file(import_directory), sheet_name="Submission Form")
@@ -330,26 +351,30 @@ def check_directory(import_directory, verbose=False, print_md=False):
     logs_good = prettyprint_check_logs(import_directory, image_filenames, verbose=verbose)
     omero_good = prettyprint_check_omero(md_df, omero_group, verbose=verbose)
     remaining_good = check_remaining_images(import_directory, verbose=verbose)
+    if move:
+        if logs_good and omero_good and remaining_good:
+            rename_directory(import_directory)
     return logs_good, omero_good, remaining_good
 
-def check_all_directories(dropbox_path, verbose=False):
+def check_all_directories(dropbox_path, verbose=False, move=False):
     """Loop through all import directories"""
     for dirname in sorted(os.listdir(dropbox_path)):
         dirpath = os.path.join(dropbox_path, dirname)
         if os.path.isdir(dirpath):
-            print("Checking import directory "+dirname)
-            check_directory(dirpath, verbose=verbose)
+            print("Checking import directory {}, created by {}".format(dirname,get_owner(dirpath)))
+            check_directory(dirpath, verbose=verbose, move=move)
             print("")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Check OMERO import directory logs')
     parser.add_argument('--dir', help='Directory path to check, if ends in "dropbox" will loop through subdirectories', required=True)
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output')
+    parser.add_argument('-m','--move',action='store_true', help="Rename folder with prefix if all checks pass")
     args = parser.parse_args()
     dirpath = pathlib.Path(args.dir)
     if not dirpath.exists():
         raise FileNotFoundError("Provided directory path to check does not exist. Make sure you map the volume first.")
     if dirpath.name == "dropbox":
-        check_all_directories(args.dir, args.verbose)
+        check_all_directories(args.dir, args.verbose, args.move)
     else:
-        check_directory(args.dir, args.verbose, args.verbose)
+        check_directory(args.dir, args.verbose, args.verbose, args.move)
