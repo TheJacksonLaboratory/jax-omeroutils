@@ -288,7 +288,6 @@ def check_omero(md_df, images_moved_dict, omero_group, omero_user, verbose=False
     return image_counts
 
 def prettyprint_check_omero(md_df, images_moved_dict, omero_group, omero_user, verbose=False):
-    print(md_df)
     """Print number of images found in OMERO per file"""
     image_counts = check_omero(md_df, images_moved_dict, omero_group, omero_user, verbose)
     unique_image_counts = sorted(set(image_counts))
@@ -325,14 +324,14 @@ def check_remaining_images(import_directory, verbose=False):
     if remaining_directories:
         if verbose:
             print("WARNING: The following remaining directories were discovered:")
-            for dirpath in remaining_directories:
+            for dirpath in sorted(remaining_directories):
                 print("\t"+dirpath.name)
         else:
             print("WARNING: Discovered {} remaining directories".format(len(remaining_directories)))
     if remaining_images:
         if verbose:
             print("BAD: The following remaining images were discovered:")
-            for imgname in remaining_images:
+            for imgname in sorted(remaining_images):
                 print("\t"+imgname)
         else:
             print("BAD: Discovered {} remaining images".format(len(remaining_images)))
