@@ -288,6 +288,7 @@ def check_omero(md_df, images_moved_dict, omero_group, omero_user, verbose=False
     return image_counts
 
 def prettyprint_check_omero(md_df, images_moved_dict, omero_group, omero_user, verbose=False):
+    print(md_df)
     """Print number of images found in OMERO per file"""
     image_counts = check_omero(md_df, images_moved_dict, omero_group, omero_user, verbose)
     unique_image_counts = sorted(set(image_counts))
@@ -303,9 +304,9 @@ def prettyprint_check_omero(md_df, images_moved_dict, omero_group, omero_user, v
         if verbose:
             for i in range(len(image_counts)):
                 if not image_counts[i]:
-                    print("BAD: {} not found in OMERO project {}, dataset {}".format(md_df["filename"][i], 
-                                                                                    md_df["project"][i],
-                                                                                    md_df["dataset"][i]))
+                    print("BAD: {} not found in OMERO project {}, dataset {}".format(md_df["filename"].iloc[i], 
+                                                                                    md_df["project"].iloc[i],
+                                                                                    md_df["dataset"].iloc[i]))
         return False
     
 def check_remaining_images(import_directory, verbose=False):
