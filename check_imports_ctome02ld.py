@@ -168,7 +168,7 @@ def check_log(log_path, verbose=True):
 
 def check_logs(import_directory, image_filenames):
     """loop through all logs in directory and call check_log"""
-    images_dict = dict.fromkeys(image_filenames, 0)
+    images_dict = {image_filename : [] for image_filename in image_filenames}
     extra_images = []
     unknown_lines_all = []
     import_directory = pathlib.Path(import_directory)
@@ -179,23 +179,30 @@ def check_logs(import_directory, image_filenames):
             success_filenames, unknown_lines = check_log(f, image_filenames)
             for filename in success_filenames:
                 if filename in images_dict:
-                    images_dict[filename] = images_dict[filename] + 1
+                    images_dict[filename].append(pathlib.Path(f).stem) # list of dates moved
+                    #images_dict[filename] = images_dict[filename] + 1
                 else:
                     extra_images.append(filename)
             unknown_lines_all = unknown_lines_all + unknown_lines
     return num_logs, images_dict, extra_images, unknown_lines_all
 
 def prettyprint_check_logs(import_directory, image_filenames, verbose=False):
+    """Print how many files moved to hyperfile at which times, print any error messages. Return boolean success and dictionary of dates files moved"""
     num_logs, images_dict, extra_images, unknown_lines_all = check_logs(import_directory, image_filenames)
     failed_image_count = 0
+    dup_images = []
     if num_logs == 0:
         print("WAIT: There are no logs yet")
-        return False
+        return False, images_dict
     for filename in image_filenames:
-        if images_dict[filename] != 1:
+        if len(images_dict[filename]) < 1:
             if verbose:
                 print("BAD: {} was moved {} times".format(filename, images_dict[filename]))
             failed_image_count += 1
+        if len(images_dict[filename]) > 1:
+            if verbose:
+                print("WARNING: {} was moved multiple times: {}".format(filename, ", ".join(images_dict[filename])))
+            dup_images.append(filename)
     unknown_lines_count = Counter(unknown_lines_all)
     for unknown_line in unknown_lines_count.keys():
         print("WARNING: \"{}\" received {} times".format(unknown_line, unknown_lines_count[unknown_line]))
@@ -208,33 +215,48 @@ def prettyprint_check_logs(import_directory, image_filenames, verbose=False):
             extra_image_extensions.add("None")
     if extra_images:
         print("WARNING: {} extra images moved to hyperfile with extensions {}".format(len(extra_images),", ".join(extra_image_extensions)))
+    if len(dup_images) > 0:
+        print("WARNING: {} images moved multiple times".format(len(dup_images)))
     if failed_image_count == 0:
         print("GOOD: All images from spreadsheet moved to hyperfile")
-        return True
+        return True, images_dict
     else:
         print("BAD: {} images from spreadsheet were not moved to hyperfile".format(failed_image_count))
-        return False
+        return False, images_dict
 
-def get_image_names(conn, project_name, dataset_name):
+def get_image_filepaths(conn, project_name, dataset_name):
     q = conn.getQueryService()
     params = Parameters()
     params.map = {"project": rstring(project_name),
                   "dataset": rstring(dataset_name)}
     results = q.projection(
-            "SELECT i.name FROM Project p"
+            "SELECT uf.clientPath, i.name FROM Project p"
             " JOIN p.datasetLinks pdl"
             " JOIN pdl.child d"
             " JOIN d.imageLinks dil"
             " JOIN dil.child i"
+            " JOIN i.fileset f"
+            " JOIN f.usedFiles uf"
             " WHERE p.name=:project"
             " AND d.name=:dataset",
             params,
             conn.SERVICE_OPTS
             )
-    results_list = [r[0].val for r in results]
+    results_list = [(r[0].val, r[1].val) for r in results]
     return results_list
 
-def check_omero(md_df, omero_group):
+def check_filepath_matches(filename, omero_user, images_moved_dict, omero_filepath_hql):
+    move_time = images_moved_dict[filename][-1] # get the last move time (though should only be one)
+    # hyperfile folder should match log timepoint but be off by minutes-seconds (hopefully not hours)
+    predicted_folder_prefix = "{}_{}".format(omero_user, move_time)[:-4] # remove minutes and seconds
+    filepath = pathlib.Path(omero_filepath_hql[0])
+    omero_img_name = omero_filepath_hql[1]
+    actual_folder_prefix = filepath.parent.name[:-4] # remove minutes and seconds
+    matches = actual_folder_prefix == predicted_folder_prefix and filepath.name == filename
+    return matches, omero_img_name
+
+def check_omero(md_df, images_moved_dict, omero_group, omero_user, verbose=False):
+    """Given dates logs say images moved to hyperfile, check that images exist in correct omero dataset with that path"""
     all_zero = True
     image_counts = []
     conn = ezomero.connect(group=omero_group, host=OMERO_HOST, port=OMERO_PORT, user=OMERO_USER, password=OMERO_PASS, secure=True)
@@ -242,20 +264,32 @@ def check_omero(md_df, omero_group):
         print("BAD: OMERO login didn't work, likely incorrect group name")
         return([0]*md_df.shape[0])
     for index, row in md_df.iterrows():
-        images_in_dataset = get_image_names(conn, row["project"], row["dataset"])
-        if len(images_in_dataset) != 0: all_zero = False
+        if len(images_moved_dict[row["filename"]]) == 0:
+            print("{} never moved to OMERO".format(row["filename"]))
+            image_counts.append(0)
+            continue # not moved yet
+        # could improve this by only doing for each unique project/dataset instead of each row of spreadsheet
+        filepaths_in_dataset = get_image_filepaths(conn, row["project"], row["dataset"])
+        if len(filepaths_in_dataset) != 0: all_zero = False
         this_image_count = 0
-        for imagename in images_in_dataset:
-            if imagename.startswith(row["filename"]):
+        for filepath_hql in filepaths_in_dataset:
+            matches, omero_img_name = check_filepath_matches(row["filename"], omero_user, images_moved_dict, filepath_hql)
+            if matches:
                 this_image_count += 1
+                if verbose:
+                    print("{} found in OMERO with image name {}".format(row["filename"],omero_img_name))
         image_counts.append(this_image_count)
+        if verbose:
+            if this_image_count == 0:
+                print("{} not found in OMERO".format(row["filename"]))
     if all_zero == True:
         print("WARNING: all HQL queries returned no values - please check OMERO credentials and connect using an admin account")
     conn.close()
     return image_counts
 
-def prettyprint_check_omero(md_df, omero_group, verbose=False):
-    image_counts = check_omero(md_df, omero_group)
+def prettyprint_check_omero(md_df, images_moved_dict, omero_group, omero_user, verbose=False):
+    """Print number of images found in OMERO per file"""
+    image_counts = check_omero(md_df, images_moved_dict, omero_group, omero_user, verbose)
     unique_image_counts = sorted(set(image_counts))
     string_positive_counts = ", ".join([str(x) for x in unique_image_counts if x!=0])
     if 0 not in unique_image_counts:
@@ -304,7 +338,7 @@ def check_remaining_images(import_directory, verbose=False):
         return False
     return True
 
-def rename_directory(dirpath, prefix="_donetodelete_"):
+def rename_directory(dirpath, prefix="_completed_"):
     dirpath = pathlib.Path(dirpath)
     new_dirname = dirpath.name
     if not new_dirname.startswith(prefix):
@@ -348,8 +382,8 @@ def check_directory(import_directory, verbose=False, print_md=False, move=False)
         print(", ".join(column_names))
         for i in range(md_df.shape[0]):
             print(", ".join(md_df.iloc[i][column_names].tolist()))
-    logs_good = prettyprint_check_logs(import_directory, image_filenames, verbose=verbose)
-    omero_good = prettyprint_check_omero(md_df, omero_group, verbose=verbose)
+    logs_good, images_moved_dict = prettyprint_check_logs(import_directory, image_filenames, verbose=verbose)
+    omero_good = prettyprint_check_omero(md_df, images_moved_dict, omero_group, omero_user, verbose=verbose)
     remaining_good = check_remaining_images(import_directory, verbose=verbose)
     if move:
         if logs_good and omero_good and remaining_good:
