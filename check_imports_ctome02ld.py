@@ -265,7 +265,8 @@ def check_omero(md_df, images_moved_dict, omero_group, omero_user, verbose=False
         return([0]*md_df.shape[0])
     for index, row in md_df.iterrows():
         if len(images_moved_dict[row["filename"]]) == 0:
-            print("{} never moved to OMERO".format(row["filename"]))
+            if verbose:
+                print("{} never moved to OMERO".format(row["filename"]))
             image_counts.append(0)
             continue # not moved yet
         # could improve this by only doing for each unique project/dataset instead of each row of spreadsheet
