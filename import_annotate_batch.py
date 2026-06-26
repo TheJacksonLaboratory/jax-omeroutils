@@ -5,6 +5,7 @@ safety.
 """
 import argparse
 import json
+# config.py found at https://dirtburger.jax.org/app/#/secrets/22866/general
 from jax_omeroutils.config import OMERO_USER, OMERO_PASS
 from jax_omeroutils.config import OMERO_HOST, OMERO_PORT
 from pathlib import Path
