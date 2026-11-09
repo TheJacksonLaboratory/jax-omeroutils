@@ -5,7 +5,10 @@ from pathlib import PurePosixPath
 
 from omero.gateway import BlitzGateway
 
-# usage: python make_globus_batch.py <Project|Dataset>:<id> <src_root> <dest_root> <out_file> [<base_dir>]
+# usage: python make_globus_batch.py [--flatten] <Project|Dataset>:<id> <src_root> <dest_root> <out_file> [<base_dir>]
+#   --flatten: put every file directly in dest_root instead of recreating the
+#             folder structure below src_root. Files whose names collide are skipped
+#             with a warning (otherwise they would overwrite each other).
 #   <Project|Dataset>:<id>: OMERO object, same syntax as the OMERO CLI (e.g. Dataset:123)
 #   src_root: common parent folder of the source files, as seen on the machine
 #             running the Globus source endpoint
@@ -14,11 +17,16 @@ from omero.gateway import BlitzGateway
 # The OMERO server is read from the OMERO_HOST environment variable (or prompted for).
 # e.g.   python make_globus_batch.py Dataset:123 /data/omero/lab1 \
 #            /shares/my-share globus_batch.txt
-target, src_root, dest_root, out_file = sys.argv[1:5]
+flatten = "--flatten" in sys.argv[1:]
+args = [a for a in sys.argv[1:] if a != "--flatten"]
+if not 4 <= len(args) <= 5:
+    sys.exit(__doc__ or "usage: make_globus_batch.py [--flatten] <Project|Dataset>:<id> "
+             "<src_root> <dest_root> <out_file> [<base_dir>]")
+target, src_root, dest_root, out_file = args[:4]
 obj_type, _, obj_id = target.partition(":")
 if obj_type not in ("Project", "Dataset") or not obj_id.isdigit():
     sys.exit("first argument must be Project:<id> or Dataset:<id>")
-base_dir = PurePosixPath(sys.argv[5]) if len(sys.argv) > 5 else None
+base_dir = PurePosixPath(args[4]) if len(args) > 4 else None
 src_root, dest_root = PurePosixPath(src_root), PurePosixPath(dest_root)
 
 # Transfer types that leave the original file in place (the OMERO repo only
@@ -86,6 +94,8 @@ conn.close()
 # Everything in this loop is string manipulation only (PurePosixPath never
 # touches the filesystem), so it does not matter whether the source files
 # exist or are mounted on the machine running this script.
+written = 0
+used_dests = {}  # flattened dest path -> source path (to detect name collisions)
 with open(out_file, "w") as f:
     for p in sorted(paths):  # sorted so the output is the same on every run
         p = PurePosixPath(p)
@@ -105,5 +115,14 @@ with open(out_file, "w") as f:
             warn(f"{p} is not under {src_root}; skipped")
             skipped += 1
             continue
-        f.write(f"{q(p)} {q(dest_root / rel)}\n")
-print(f"wrote {len(paths)} files to {out_file}; {skipped} skipped (see warnings)")
+        dest = dest_root / p.name if flatten else dest_root / rel
+        if flatten:
+            if dest in used_dests:
+                warn(f"{p} would overwrite {used_dests[dest]} at {dest} when "
+                     "flattened; skipped")
+                skipped += 1
+                continue
+            used_dests[dest] = p
+        f.write(f"{q(p)} {q(dest)}\n")
+        written += 1
+print(f"wrote {written} files to {out_file}; {skipped} skipped (see warnings)")
