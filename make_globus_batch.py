@@ -1,3 +1,4 @@
+import argparse
 import getpass
 import sys
 import os
@@ -5,21 +6,38 @@ from pathlib import PurePosixPath
 
 from omero.gateway import BlitzGateway
 
-# usage: python make_globus_batch.py <Project|Dataset>:<id> <src_root> <dest_root> <out_file> [<base_dir>]
-#   <Project|Dataset>:<id>: OMERO object, same syntax as the OMERO CLI (e.g. Dataset:123)
-#   src_root: common parent folder of the source files, as seen on the machine
-#             running the Globus source endpoint
-#   dest_root: folder on the destination Globus collection to copy into
-#   base_dir: only needed if images were imported with relative paths
-# The OMERO server is read from the OMERO_HOST environment variable (or prompted for).
-# e.g.   python make_globus_batch.py Dataset:123 /data/omero/lab1 \
-#            /shares/my-share globus_batch.txt
-target, src_root, dest_root, out_file = sys.argv[1:5]
-obj_type, _, obj_id = target.partition(":")
-if obj_type not in ("Project", "Dataset") or not obj_id.isdigit():
-    sys.exit("first argument must be Project:<id> or Dataset:<id>")
-base_dir = PurePosixPath(sys.argv[5]) if len(sys.argv) > 5 else None
-src_root, dest_root = PurePosixPath(src_root), PurePosixPath(dest_root)
+
+def omero_object(value):
+    obj_type, _, obj_id = value.partition(":")
+    if obj_type not in ("Project", "Dataset") or not obj_id.isdigit():
+        raise argparse.ArgumentTypeError("must be Project:<id> or Dataset:<id>")
+    return obj_type, int(obj_id)
+
+
+parser = argparse.ArgumentParser(
+    description="Write a Globus transfer batch file for the original files of "
+                "in-place imported OMERO images. The OMERO server is read from "
+                "the OMERO_HOST environment variable (or prompted for).",
+    epilog="e.g.  python make_globus_batch.py Dataset:123 /data/omero/lab1 "
+           "/shares/my-share globus_batch.txt",
+)
+parser.add_argument("target", type=omero_object, metavar="<Project|Dataset>:<id>",
+                    help="OMERO object, same syntax as the OMERO CLI (e.g. Dataset:123)")
+parser.add_argument("src_root", type=PurePosixPath,
+                    help="common parent folder of the source files, as seen on the "
+                         "machine running the Globus source endpoint")
+parser.add_argument("dest_root", type=PurePosixPath,
+                    help="folder on the destination Globus collection to copy into")
+parser.add_argument("out_file", help="batch file to write")
+parser.add_argument("base_dir", nargs="?", type=PurePosixPath,
+                    help="only needed if images were imported with relative paths")
+parser.add_argument("--flatten", action="store_true",
+                    help="put every file directly in dest_root instead of recreating "
+                         "the folder structure below src_root; files whose names "
+                         "collide are skipped with a warning")
+args = parser.parse_args()
+(obj_type, obj_id), src_root, dest_root = args.target, args.src_root, args.dest_root
+out_file, base_dir, flatten = args.out_file, args.base_dir, args.flatten
 
 # Transfer types that leave the original file in place (the OMERO repo only
 # holds a link to it). Copy/move transfers put the data inside the OMERO repo.
@@ -47,7 +65,7 @@ conn = BlitzGateway(
 conn.connect()
 conn.SERVICE_OPTS.setOmeroGroup(-1)  # search across all groups you can read
 
-obj = conn.getObject(obj_type, int(obj_id))
+obj = conn.getObject(obj_type, obj_id)
 if obj is None:
     sys.exit(f"{obj_type} {obj_id} not found or not readable")
 
@@ -86,6 +104,8 @@ conn.close()
 # Everything in this loop is string manipulation only (PurePosixPath never
 # touches the filesystem), so it does not matter whether the source files
 # exist or are mounted on the machine running this script.
+written = 0
+used_dests = {}  # flattened dest path -> source path (to detect name collisions)
 with open(out_file, "w") as f:
     for p in sorted(paths):  # sorted so the output is the same on every run
         p = PurePosixPath(p)
@@ -105,5 +125,14 @@ with open(out_file, "w") as f:
             warn(f"{p} is not under {src_root}; skipped")
             skipped += 1
             continue
-        f.write(f"{q(p)} {q(dest_root / rel)}\n")
-print(f"wrote {len(paths)} files to {out_file}; {skipped} skipped (see warnings)")
+        dest = dest_root / p.name if flatten else dest_root / rel
+        if flatten:
+            if dest in used_dests:
+                warn(f"{p} would overwrite {used_dests[dest]} at {dest} when "
+                     "flattened; skipped")
+                skipped += 1
+                continue
+            used_dests[dest] = p
+        f.write(f"{q(p)} {q(dest)}\n")
+        written += 1
+print(f"wrote {written} files to {out_file}; {skipped} skipped (see warnings)")
