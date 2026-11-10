@@ -3,7 +3,7 @@
 # dependencies = []
 #
 # [tool.pixi.workspace]
-# channels = ["conda-forge", "ome"]
+# channels = ["conda-forge"]
 # platforms = ["osx-arm64", "linux-64"]
 #
 # [tool.pixi.dependencies]
