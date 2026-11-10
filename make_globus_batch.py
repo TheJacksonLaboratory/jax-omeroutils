@@ -1,3 +1,16 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+#
+# [tool.pixi.workspace]
+# channels = ["conda-forge", "ome"]
+# platforms = ["osx-arm64", "linux-64"]
+#
+# [tool.pixi.dependencies]
+# omero-py = "*"
+# python = "3.12.*"
+# ///
+
 import argparse
 import getpass
 import sys
@@ -18,7 +31,7 @@ parser = argparse.ArgumentParser(
     description="Write a Globus transfer batch file for the original files of "
                 "in-place imported OMERO images. The OMERO server is read from "
                 "the OMERO_HOST environment variable (or prompted for).",
-    epilog="e.g.  python make_globus_batch.py Dataset:123 /data/omero/lab1 "
+    epilog="e.g.  pixi run --script make_globus_batch.py Dataset:123 /data/omero/lab1 "
            "/shares/my-share globus_batch.txt",
 )
 parser.add_argument("target", type=omero_object, metavar="<Project|Dataset>:<id>",
@@ -56,13 +69,20 @@ def warn(msg):
     print(f"WARNING: {msg}", file=sys.stderr)
 
 
+omero_user = input("OMERO user: ")
+omero_host = os.environ.get("OMERO_HOST") or input("OMERO host: ")
 conn = BlitzGateway(
-    username=input("OMERO user: "),
+    username=omero_user,
     passwd=getpass.getpass(),
-    host=os.environ.get("OMERO_HOST") or input("OMERO host: "),
+    host=omero_host,
     port=4064,
 )
-conn.connect()
+if not conn.connect():
+    sys.exit(
+        f"Could not connect to OMERO at {omero_host}:4064 as "
+        f"'{omero_user}'. Check your "
+        "username, password, and host (and that the server is reachable)."
+    )
 conn.SERVICE_OPTS.setOmeroGroup(-1)  # search across all groups you can read
 
 obj = conn.getObject(obj_type, obj_id)
