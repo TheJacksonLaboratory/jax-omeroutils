@@ -18,6 +18,8 @@ import os
 from pathlib import PurePosixPath
 
 from omero.gateway import BlitzGateway
+from omero.constants.namespaces import NSFILETRANSFER
+from omero.sys import ParametersI
 
 
 def omero_object(value):
@@ -69,6 +71,30 @@ def warn(msg):
     print(f"WARNING: {msg}", file=sys.stderr)
 
 
+# Rough Globus throughput, from one recent transfer (23 GB in 1.5 min). Real
+# speed varies a lot with endpoints, network and file count, so treat the
+# printed estimate as a ballpark only.
+GLOBUS_BYTES_PER_SECOND = 23e9 / 90
+
+
+def human_size(n):
+    for unit in ("B", "KB", "MB", "GB"):
+        if n < 1000:
+            return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
+        n /= 1000
+    return f"{n:.1f} TB"
+
+
+def human_time(seconds):
+    if seconds < 10:
+        return f"{seconds:.1f} seconds"
+    if seconds < 90:
+        return f"{seconds:.0f} seconds"
+    if seconds < 5400:
+        return f"{seconds / 60:.1f} minutes"
+    return f"{seconds / 3600:.1f} hours"
+
+
 omero_user = input("OMERO user: ")
 omero_host = os.environ.get("OMERO_HOST") or input("OMERO host: ")
 conn = BlitzGateway(
@@ -89,46 +115,71 @@ obj = conn.getObject(obj_type, obj_id)
 if obj is None:
     sys.exit(f"{obj_type} {obj_id} not found or not readable")
 
+# Two HQL queries replace per-image gateway calls (which cost several server
+# round trips per image): one lists every image in scope with the transfer type
+# recorded on its fileset, the other fetches the original file paths for the
+# in-place filesets. Runtime is ~constant instead of ~0.25s per image.
+# left joins keep images with no fileset (pre-5.0 imports) and filesets with no
+# file-transfer annotation (copy/move uploads); both come back with transfer None
+SELECT = "select i.id, i.name, i.fileset.id, a.textValue "
+JOIN_FILESET = ("left join i.fileset fs left join fs.annotationLinks al "
+                "left join al.child a with a.ns = :ns ")
 if obj_type == "Project":
-    images = (img for ds in obj.listChildren() for img in ds.listChildren())
+    hql = (SELECT + "from Project p join p.datasetLinks dl join dl.child d "
+           "join d.imageLinks il join il.child i " + JOIN_FILESET + "where p.id = :id")
 else:
-    images = obj.listChildren()
+    hql = (SELECT + "from Dataset d join d.imageLinks il join il.child i "
+           + JOIN_FILESET + "where d.id = :id")
+query_service = conn.getQueryService()
+rows = query_service.projection(
+    hql, ParametersI().addId(obj_id).addString("ns", NSFILETRANSFER), conn.SERVICE_OPTS)
 
-paths = set()
+images = {}  # image id -> (name, fileset id, transfer); dedupes images in >1 dataset
+for image_id, name, fs_id, transfer in rows:
+    images[image_id.val] = (name.val, fs_id.val if fs_id else None,
+                            transfer.val if transfer else None)
+print(f"{obj_type} {obj_id} has {len(images)} images")
+
+in_place_filesets = set()
 skipped = 0
-seen_filesets = {}  # fileset id -> list of source paths, or None if skipped
-for img in images:
-    fileset = img._obj.fileset  # unloaded Fileset; None for pre-FS images
-    fs_id = fileset.id.val if fileset is not None else None
-    if fs_id is not None and fs_id in seen_filesets:
-        continue  # images from the same fileset share the same files
-
-    transfer = img.getInplaceImport()
-    if transfer not in IN_PLACE:
-        how = transfer.rsplit(".", 1)[-1] if transfer else "not an in-place import"
-        warn(f"image {img.getId()} ({img.getName()}) was not imported in place "
-                f"({how}); skipped")
-        skipped += 1
-        if fs_id is not None:
-            seen_filesets[fs_id] = None
+seen_skipped = set()  # warn once per skipped fileset (its images share one cause)
+for image_id, (name, fs_id, transfer) in sorted(images.items()):
+    if transfer in IN_PLACE:
+        in_place_filesets.add(fs_id)
         continue
-
-    # client_paths are the original file locations given at import time.
-    # (server_paths would point at the links inside the OMERO managed repo.)
-    files = img.getImportedImageFilePaths()["client_paths"]
     if fs_id is not None:
-        seen_filesets[fs_id] = files
-    paths.update(files)
+        if fs_id in seen_skipped:
+            continue  # images from the same fileset share the same files
+        seen_skipped.add(fs_id)
+    how = transfer.rsplit(".", 1)[-1] if transfer else "not an in-place import"
+    warn(f"image {image_id} ({name}) was not imported in place ({how}); skipped")
+    skipped += 1
+
+# client paths are the original file locations given at import time.
+# (server paths would point at the links inside the OMERO managed repo.)
+# Sizes come from the same query (OriginalFile.size, in bytes) so the transfer
+# time can be estimated without touching the files.
+sizes = {}  # client path -> size in bytes
+if in_place_filesets:
+    for client_path, size in query_service.projection(
+        "select fse.clientPath, fse.originalFile.size from FilesetEntry fse "
+        "where fse.fileset.id in (:ids)",
+        ParametersI().addIds(sorted(in_place_filesets)),
+        conn.SERVICE_OPTS,
+    ):
+        sizes[client_path.val] = size.val if size else 0
+paths = set(sizes)
 conn.close()
 
 # Everything in this loop is string manipulation only (PurePosixPath never
 # touches the filesystem), so it does not matter whether the source files
 # exist or are mounted on the machine running this script.
 written = 0
+written_bytes = 0
 used_dests = {}  # flattened dest path -> source path (to detect name collisions)
 with open(out_file, "w") as f:
-    for p in sorted(paths):  # sorted so the output is the same on every run
-        p = PurePosixPath(p)
+    for raw_path in sorted(paths):  # sorted so the output is the same on every run
+        p = PurePosixPath(raw_path)
         # make relative import paths absolute by prefixing base_dir
         if not p.is_absolute() and base_dir is not None:
             p = base_dir / p
@@ -155,4 +206,8 @@ with open(out_file, "w") as f:
             used_dests[dest] = p
         f.write(f"{q(p)} {q(dest)}\n")
         written += 1
+        written_bytes += sizes[raw_path]
 print(f"wrote {written} files to {out_file}; {skipped} skipped (see warnings)")
+print(f"total size {human_size(written_bytes)}; estimated Globus transfer time "
+      f"~{human_time(written_bytes / GLOBUS_BYTES_PER_SECOND)} "
+      "(very rough: depends on endpoints, network and file count)")
