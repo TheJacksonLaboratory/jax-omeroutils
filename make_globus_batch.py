@@ -31,8 +31,9 @@ def omero_object(value):
 
 parser = argparse.ArgumentParser(
     description="Write a Globus transfer batch file for the original files of "
-                "in-place imported OMERO images. The OMERO server is read from "
-                "the OMERO_HOST environment variable (or prompted for).",
+                "in-place imported OMERO images. The OMERO server is taken from "
+                "--omero-host, else the OMERO_HOST environment variable, else "
+                "prompted for.",
     epilog="e.g.  pixi run --script make_globus_batch.py Dataset:123 /data/omero/lab1 "
            "/shares/my-share globus_batch.txt",
 )
@@ -50,6 +51,9 @@ parser.add_argument("--flatten", action="store_true",
                     help="put every file directly in dest_root instead of recreating "
                          "the folder structure below src_root; files whose names "
                          "collide are skipped with a warning")
+parser.add_argument("--omero-host",
+                    help="OMERO server to connect to (default: the OMERO_HOST "
+                         "environment variable, else prompted for)")
 args = parser.parse_args()
 (obj_type, obj_id), src_root, dest_root = args.target, args.src_root, args.dest_root
 out_file, base_dir, flatten = args.out_file, args.base_dir, args.flatten
@@ -96,7 +100,8 @@ def human_time(seconds):
 
 
 omero_user = input("OMERO user: ")
-omero_host = os.environ.get("OMERO_HOST") or input("OMERO host: ")
+omero_host = (args.omero_host or os.environ.get("OMERO_HOST")
+              or input("OMERO host: "))
 conn = BlitzGateway(
     username=omero_user,
     passwd=getpass.getpass(),

@@ -214,9 +214,10 @@ def origin_image_ids(session, public_url, public_ids):
 
 # ---- internal OMERO -----------------------------------------------------------
 
-def connect_internal():
+def connect_internal(host=None):
     omero_user = input("Internal OMERO user: ")
-    omero_host = os.environ.get("OMERO_HOST") or input("Internal OMERO host: ")
+    omero_host = (host or os.environ.get("OMERO_HOST")
+                  or input("Internal OMERO host: "))
     conn = BlitzGateway(
         username=omero_user,
         passwd=getpass.getpass(),
@@ -326,8 +327,8 @@ def main(argv=None):
                     "Each public image's "
                     f"'{ORIGIN_KEY}' annotation (namespace {ORIGIN_NS}) gives the "
                     "image id on the internal OMERO, which is then looked up there. "
-                    "The internal OMERO server is read from the OMERO_HOST "
-                    "environment variable (or prompted for).",
+                    "The internal OMERO server is taken from --omero-host, else the "
+                    "OMERO_HOST environment variable, else prompted for.",
         epilog="e.g.  pixi run --script make_globus_batch_public.py Dataset:4251 "
                "/data/omero/lab1 /shares/my-share globus_batch.txt   (or give "
                "objects.txt instead of Dataset:4251)",
@@ -352,6 +353,9 @@ def main(argv=None):
                              "collide are skipped with a warning")
     parser.add_argument("--public-url", default=DEFAULT_PUBLIC_URL,
                         help=f"public OMERO web address (default {DEFAULT_PUBLIC_URL})")
+    parser.add_argument("--omero-host",
+                        help="INTERNAL OMERO server to connect to (default: the "
+                             "OMERO_HOST environment variable, else prompted for)")
     args = parser.parse_args(argv)
     (obj_type, obj_id), src_root, dest_root = args.target, args.src_root, args.dest_root
     public_url = args.public_url.rstrip("/")
@@ -381,7 +385,7 @@ def main(argv=None):
         sys.exit("Nothing to transfer: no public image has an internal image id.")
 
     # 2. internal OMERO: which of those were imported in place, and where are the files
-    conn = connect_internal()
+    conn = connect_internal(args.omero_host)
     images = internal_images(conn, internal_ids)
     not_found = [i for i in internal_ids if i not in images]  # can be many: summarized
     if not_found:
