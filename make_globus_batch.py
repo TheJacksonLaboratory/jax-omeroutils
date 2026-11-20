@@ -9,14 +9,17 @@
 # [tool.pixi.dependencies]
 # omero-py = "*"
 # python = "3.12.*"
+# requests = "*"  # only used with --public
 # ///
 
 import argparse
 import getpass
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import PurePosixPath
 
+import requests  # only used with --public
 from omero.gateway import BlitzGateway
 from omero.constants.namespaces import NSFILETRANSFER
 from omero.sys import ParametersI
@@ -125,12 +128,99 @@ def connect(host=None):
     return conn
 
 
+# ---- PUBLIC OMERO ONLY (--public) --------------------------------------------
+# Images on the public OMERO (no login needed) were copied from the internal
+# OMERO with omero-cli-transfer, which records the internal image id in a map
+# annotation. Everything below turns public objects into internal image ids;
+# the rest of the script then treats both modes the same.
+
+DEFAULT_PUBLIC_URL = "https://images.jax.org"
+ORIGIN_NS = "openmicroscopy.org/cli/transfer"
+ORIGIN_KEY = "origin_image_id"
+PUBLIC_PAGE_SIZE = 500   # maxLimit of the public JSON API
+PUBLIC_ANNOTATION_CHUNK = 100  # image ids per annotation request (500 is too long a URL)
+PUBLIC_THREADS = 8
+
+
+def public_get(session, url, params=None):
+    """Public mode only: GET a JSON document; None if it is a 404."""
+    try:
+        response = session.get(url, params=params, timeout=120)
+    except requests.RequestException as e:
+        sys.exit(f"Could not reach the public OMERO at {url}: {e}")
+    if response.status_code == 404:
+        return None
+    if not response.ok:
+        sys.exit(f"Public OMERO returned HTTP {response.status_code} for {url}")
+    return response.json()
+
+
+def public_list(session, url):
+    """Public mode only: all items of a paginated JSON API listing."""
+    items = []
+    while True:
+        page = public_get(session, url, {"limit": PUBLIC_PAGE_SIZE, "offset": len(items)})
+        items += page["data"]
+        if not page["data"] or len(items) >= page["meta"]["totalCount"]:
+            return items
+
+
+def public_image_ids(session, public_url, obj_type, obj_id):
+    """Public mode only: public ids of every image in a public project or dataset."""
+    api = f"{public_url}/api/v0/m"
+    if public_get(session, f"{api}/{obj_type.lower()}s/{obj_id}/") is None:
+        sys.exit(f"{obj_type} {obj_id} not found or not readable")
+    if obj_type == "Project":
+        dataset_ids = [d["@id"] for d in public_list(session, f"{api}/projects/{obj_id}/datasets/")]
+    else:
+        dataset_ids = [obj_id]
+    with ThreadPoolExecutor(PUBLIC_THREADS) as pool:
+        listings = pool.map(
+            lambda d: public_list(session, f"{api}/datasets/{d}/images/"), dataset_ids)
+        return [image["@id"] for images in listings for image in images]
+
+
+def public_to_internal_ids(session, public_url, public_ids):
+    """Public mode only: map public image id -> internal image id.
+
+    Read from the origin_image_id annotation. Images without exactly one
+    numeric value (or that do not exist / are not public) are left out.
+    """
+    def fetch(chunk):
+        # webclient endpoint: the JSON API has no annotation listing. Filtering
+        # by namespace on the server keeps the response small.
+        result = public_get(
+            session, f"{public_url}/webclient/api/annotations/",
+            [("type", "map"), ("ns", ORIGIN_NS)] + [("image", i) for i in chunk])
+        found = {}
+        for annotation in result["annotations"]:
+            values = dict(annotation["values"])
+            if ORIGIN_KEY in values:
+                found.setdefault(annotation["link"]["parent"]["id"], set()).add(values[ORIGIN_KEY])
+        return found
+
+    chunks = [public_ids[i:i + PUBLIC_ANNOTATION_CHUNK]
+              for i in range(0, len(public_ids), PUBLIC_ANNOTATION_CHUNK)]
+    origins = {}
+    with ThreadPoolExecutor(PUBLIC_THREADS) as pool:
+        for found in pool.map(fetch, chunks):
+            origins.update(found)
+
+    mapping = {p: int(next(iter(v))) for p, v in origins.items()
+               if len(v) == 1 and next(iter(v)).isdigit()}
+    unmapped = [p for p in public_ids if p not in mapping]
+    if unmapped:
+        shown = ", ".join(map(str, unmapped[:10])) + (", ..." if len(unmapped) > 10 else "")
+        warn(f"{len(unmapped)} public images have no usable {ORIGIN_KEY} in {ORIGIN_NS} "
+             f"(missing, ambiguous, non-numeric, or image not public); skipped "
+             f"(public image ids: {shown})")
+    return mapping
+
+
+# ---- both modes ----------------------------------------------------------------
+
 def image_ids_in(conn, obj_type, obj_id):
-    """Ids of every image in a project or dataset (or just the image itself)."""
-    if obj_type == "Image":
-        # not checked one by one (a file can list hundreds); images that do not
-        # exist are reported by the batched lookup in lookup_images instead
-        return [obj_id]
+    """Ids of every image in a project or dataset."""
     if conn.getObject(obj_type, obj_id) is None:
         sys.exit(f"{obj_type} {obj_id} not found or not readable")
     if obj_type == "Project":
@@ -235,10 +325,12 @@ def main(argv=None):
                     "image, or from a text file listing several such objects "
                     "(Image:, Dataset: or Project: lines). The OMERO server is "
                     "taken from --omero-host, else the OMERO_HOST environment "
-                    "variable, else prompted for.",
+                    "variable, else prompted for. With --public the ids are those "
+                    "of the PUBLIC OMERO instead, and each image is translated to "
+                    f"its internal id via its {ORIGIN_KEY} annotation.",
         epilog="e.g.  pixi run --script make_globus_batch.py Dataset:123 "
                "/data/omero/lab1 /shares/my-share globus_batch.txt   (or give "
-               "objects.txt instead of Dataset:123)",
+               "objects.txt instead of Dataset:123; add --public for public ids)",
     )
     parser.add_argument("target", type=target,
                         metavar="<Project|Dataset|Image>:<id> | <objects file>",
@@ -259,10 +351,22 @@ def main(argv=None):
                              "the folder structure below src_root; files whose names "
                              "collide are skipped with a warning")
     parser.add_argument("--omero-host",
-                        help="OMERO server to connect to (default: the OMERO_HOST "
-                             "environment variable, else prompted for)")
+                        help="(internal) OMERO server to connect to (default: the "
+                             "OMERO_HOST environment variable, else prompted for)")
+    parser.add_argument("--public", action="store_true",
+                        help="the ids are on the PUBLIC OMERO (no login needed), not "
+                             "the internal one")
+    parser.add_argument("--public-url",
+                        help=f"public OMERO web address (implies --public; "
+                             f"default {DEFAULT_PUBLIC_URL})")
     args = parser.parse_args(argv)
     (obj_type, obj_id), src_root, dest_root = args.target, args.src_root, args.dest_root
+    public = args.public or args.public_url is not None
+    public_url = (args.public_url or DEFAULT_PUBLIC_URL).rstrip("/")
+
+    print("Running with --public: expecting ids from the PUBLIC OMERO "
+          f"({public_url}), translated to internal ids via {ORIGIN_KEY}" if public else
+          "Running without --public: expecting ids from the INTERNAL OMERO")
 
     if obj_type == "File":  # obj_id is then the path of a file of objects
         objects = read_objects(obj_id)
@@ -273,15 +377,27 @@ def main(argv=None):
     conn = connect(args.omero_host)
 
     # 1. image ids of everything requested
+    session = requests.Session()  # public mode only
     ids = set()  # a set: objects can overlap (an image can be in several datasets)
     for kind, number in objects:
-        found = image_ids_in(conn, kind, number)
+        if kind == "Image":
+            found = [number]  # not checked one by one (a file can list hundreds);
+            # missing images are reported by the batched lookups below instead
+        elif public:
+            found = public_image_ids(session, public_url, kind, number)
+        else:
+            found = image_ids_in(conn, kind, number)
         if kind != "Image":
-            print(f"{kind} {number} has {len(found)} images")
+            print(f"{kind} {number} has {len(set(found))} images")
         ids.update(found)
-    image_ids = sorted(ids)
     if len(objects) > 1:
-        print(f"{len(image_ids)} distinct images in total")
+        print(f"{len(ids)} distinct images in total")
+    skipped = 0
+    if public:  # translate public ids to the internal ids used from here on
+        mapping = public_to_internal_ids(session, public_url, sorted(ids))
+        skipped = len(ids) - len(mapping)
+        ids = set(mapping.values())
+    image_ids = sorted(ids)
 
     # 2. which of those were imported in place, and where are the files
     images = lookup_images(conn, image_ids)
@@ -290,7 +406,7 @@ def main(argv=None):
         shown = ", ".join(map(str, not_found[:10])) + (", ..." if len(not_found) > 10 else "")
         warn(f"{len(not_found)} images not found or not readable by this user; "
              f"skipped (image ids: {shown})")
-    skipped = len(not_found)
+    skipped += len(not_found)
 
     in_place_filesets = set()
     seen_skipped = set()  # warn once per skipped fileset (its images share one cause)
