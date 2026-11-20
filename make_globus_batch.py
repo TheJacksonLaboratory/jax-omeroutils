@@ -13,6 +13,7 @@
 # ///
 
 import argparse
+import csv
 import getpass
 import os
 import sys
@@ -259,63 +260,83 @@ def lookup_images(conn, image_ids):
 
 
 def in_place_files(conn, fileset_ids):
-    """client path -> size in bytes for the original files of these filesets.
+    """(client path -> size in bytes, fileset id -> its client paths).
 
     client paths are the original file locations given at import time.
     (server paths would point at the links inside the OMERO managed repo.)
     """
     query_service = conn.getQueryService()
-    sizes = {}
+    sizes, files_of = {}, {}
     fileset_ids = sorted(fileset_ids)
     for start in range(0, len(fileset_ids), INTERNAL_CHUNK):
-        for client_path, size in query_service.projection(
-            "select fse.clientPath, fse.originalFile.size from FilesetEntry fse "
-            "where fse.fileset.id in (:ids)",
+        for client_path, size, fs_id in query_service.projection(
+            "select fse.clientPath, fse.originalFile.size, fse.fileset.id "
+            "from FilesetEntry fse where fse.fileset.id in (:ids)",
             ParametersI().addIds(fileset_ids[start:start + INTERNAL_CHUNK]),
             conn.SERVICE_OPTS,
         ):
             sizes[client_path.val] = size.val if size else 0
-    return sizes
+            files_of.setdefault(fs_id.val, set()).add(client_path.val)
+    return sizes, files_of
 
 
-def write_batch(sizes, out_file, src_root, dest_root, base_dir, flatten):
-    """Write the globus batch file; returns (files written, bytes, skipped)."""
+def write_batch(files_of, sizes, out_file, src_root, dest_root, base_dir, flatten):
+    """Write the globus batch file.
+
+    A fileset is transferred whole or not at all: if any of its files would be
+    skipped (relative path, outside src_root, or a name collision when
+    flattening), none of its files are written. Filesets are taken in id order,
+    so on a collision the lower fileset id wins.
+
+    Returns ({client path: dest} written, bytes written, {fileset id: why skipped}).
+    """
     # Everything here is string manipulation only (PurePosixPath never
     # touches the filesystem), so it does not matter whether the source files
     # exist or are mounted on the machine running this script.
-    written = written_bytes = skipped = 0
-    used_dests = {}  # flattened dest path -> source path (to detect name collisions)
-    with open(out_file, "w") as f:
-        for raw_path in sorted(sizes):  # sorted so the output is the same on every run
+    scheduled = {}  # client path -> (source path, dest) of the files to transfer
+    used_dests = {}  # dest -> source path, to detect name collisions
+    skipped_filesets = {}  # fileset id -> why none of its files are transferred
+    for fs_id in sorted(files_of):
+        planned, planned_dests = {}, {}  # this fileset's files, before committing
+        for raw_path in sorted(files_of[fs_id]):
             p = PurePosixPath(raw_path)
             # make relative import paths absolute by prefixing base_dir
             if not p.is_absolute() and base_dir is not None:
                 p = base_dir / p
-            # Globus needs absolute source paths; skip anything still relative
-            if not p.is_absolute():
-                warn(f"{p} is a relative path (use the base_dir argument); skipped")
-                skipped += 1
-                continue
-            # strip src_root off the front to get the folder layout to recreate
-            # under dest_root (e.g. /src_root/a/b.tif -> a/b.tif)
-            try:
-                rel = p.relative_to(src_root)
-            except ValueError:  # path is not under src_root
-                warn(f"{p} is not under {src_root}; skipped")
-                skipped += 1
-                continue
-            dest = dest_root / p.name if flatten else dest_root / rel
-            if flatten:
-                if dest in used_dests:
-                    warn(f"{p} would overwrite {used_dests[dest]} at {dest} when "
-                         "flattened; skipped")
-                    skipped += 1
-                    continue
-                used_dests[dest] = p
-            f.write(f"{q(p)} {q(dest)}\n")
-            written += 1
-            written_bytes += sizes[raw_path]
-    return written, written_bytes, skipped
+            reason = dest = None
+            if not p.is_absolute():  # Globus needs absolute source paths
+                reason = "a file has a relative path (use the base_dir argument)"
+                warn(f"{p} is a relative path (use the base_dir argument); "
+                     f"fileset {fs_id} skipped")
+            elif not p.is_relative_to(src_root):
+                reason = "a file is not under src_root"
+                warn(f"{p} is not under {src_root}; fileset {fs_id} skipped")
+            else:
+                # strip src_root off the front to get the folder layout to recreate
+                # under dest_root (e.g. /src_root/a/b.tif -> a/b.tif)
+                dest = dest_root / p.name if flatten else dest_root / p.relative_to(src_root)
+                other = used_dests.get(dest, planned_dests.get(dest, p))
+                if other != p:  # the same file already scheduled is fine
+                    reason = "a file has the same name as another file when flattened"
+                    warn(f"{p} would overwrite {other} at {dest} when flattened; "
+                         f"fileset {fs_id} skipped")
+            if reason:
+                skipped_filesets[fs_id] = reason
+                break
+            planned[raw_path], planned_dests[dest] = (p, dest), p
+        else:  # every file is fine: commit the whole fileset
+            scheduled.update(planned)
+            used_dests.update(planned_dests)
+    written_bytes = 0
+    seen = set()  # a file shared by several filesets is written once
+    with open(out_file, "w") as f:
+        for raw_path in sorted(scheduled):  # sorted so the output is the same on every run
+            p, dest = scheduled[raw_path]
+            if p not in seen:
+                seen.add(p)
+                f.write(f"{q(p)} {q(dest)}\n")
+                written_bytes += sizes[raw_path]
+    return {raw: dest for raw, (_, dest) in scheduled.items()}, written_bytes, skipped_filesets
 
 
 def main(argv=None):
@@ -349,7 +370,23 @@ def main(argv=None):
     parser.add_argument("--flatten", action="store_true",
                         help="put every file directly in dest_root instead of recreating "
                              "the folder structure below src_root; files whose names "
-                             "collide are skipped with a warning")
+                             "collide cause their whole fileset to be skipped, with a "
+                             "warning")
+    parser.add_argument("--csv", metavar="FILE",
+                        help="also write a CSV accounting for the whole request, joining "
+                             "filesets and files: columns image_id, destination_path, "
+                             "status (no source paths or internal ids, so it can be "
+                             "shared). A row per file of each transferred fileset (a file "
+                             "shared by several requested filesets appears once per "
+                             "fileset, though it is transferred once). Anything skipped "
+                             "gets one row, with an empty destination and the reason in "
+                             "status: a fileset not imported in place, a fileset with a "
+                             "file that cannot be transferred (one row for the whole "
+                             "fileset), an image not found or without a usable origin "
+                             "id. image_id uses the same ids as the input (public ids "
+                             "with --public, even if the input was a dataset or "
+                             "project); when several requested images share a fileset, "
+                             "the lowest id is used")
     parser.add_argument("--omero-host",
                         help="(internal) OMERO server to connect to (default: the "
                              "OMERO_HOST environment variable, else prompted for)")
@@ -392,12 +429,15 @@ def main(argv=None):
         ids.update(found)
     if len(objects) > 1:
         print(f"{len(ids)} distinct images in total")
-    skipped = 0
+    unmapped = []  # public ids with no internal id
+    original_id = {i: i for i in ids}  # internal image id -> id in the input's terms
     if public:  # translate public ids to the internal ids used from here on
         mapping = public_to_internal_ids(session, public_url, sorted(ids))
-        skipped = len(ids) - len(mapping)
-        ids = set(mapping.values())
-    image_ids = sorted(ids)
+        unmapped = sorted(ids - mapping.keys())
+        original_id = {}
+        for public_id, internal_id in sorted(mapping.items()):
+            original_id.setdefault(internal_id, public_id)  # lowest public id wins
+    image_ids = sorted(original_id)
 
     # 2. which of those were imported in place, and where are the files
     images = lookup_images(conn, image_ids)
@@ -406,29 +446,61 @@ def main(argv=None):
         shown = ", ".join(map(str, not_found[:10])) + (", ..." if len(not_found) > 10 else "")
         warn(f"{len(not_found)} images not found or not readable by this user; "
              f"skipped (image ids: {shown})")
-    skipped += len(not_found)
 
     in_place_filesets = set()
-    seen_skipped = set()  # warn once per skipped fileset (its images share one cause)
+    not_in_place = {}  # fileset id -> why; warn once per fileset (its images share one cause)
     for image_id, (name, fs_id, transfer) in sorted(images.items()):
         if transfer in IN_PLACE:
             in_place_filesets.add(fs_id)
             continue
-        if fs_id is not None:
-            if fs_id in seen_skipped:
-                continue  # images from the same fileset share the same files
-            seen_skipped.add(fs_id)
         how = transfer.rsplit(".", 1)[-1] if transfer else "not an in-place import"
+        if fs_id is not None:
+            if fs_id in not_in_place:
+                continue  # images from the same fileset share the same files
+            not_in_place[fs_id] = how
         warn(f"image {image_id} ({name}) was not imported in place ({how}); skipped")
-        skipped += 1
-    sizes = in_place_files(conn, in_place_filesets)
+    sizes, files_of = in_place_files(conn, in_place_filesets)
     conn.close()
 
     # 3. batch file
-    written, written_bytes, path_skipped = write_batch(
-        sizes, args.out_file, src_root, dest_root, args.base_dir, args.flatten)
-    skipped += path_skipped
-    print(f"wrote {written} files to {args.out_file}; {skipped} skipped (see warnings)")
+    dests, written_bytes, skipped_filesets = write_batch(
+        files_of, sizes, args.out_file, src_root, dest_root, args.base_dir, args.flatten)
+    skipped = len(unmapped) + len(not_found) + len(not_in_place) + len(skipped_filesets) + sum(
+        fs_id is None for _, fs_id, _ in images.values())
+    print(f"wrote {len(dests)} files to {args.out_file}; {skipped} skipped (see warnings)")
+    if args.csv:  # joins every requested fileset with every file; nothing is left out
+        rows = []  # (image_id, destination_path, status); no internal paths or ids
+
+        def row(image, dest="", status="transferred"):
+            rows.append((image, str(dest), status))
+
+        for public_id in unmapped:
+            row(public_id, status="skipped: no usable origin_image_id")
+        for image_id in not_found:
+            row(original_id[image_id], status="skipped: image not found or not readable")
+        requested_filesets = {}  # fileset id -> its requested image ids (in the input's terms)
+        for image_id, (_, fs_id, _) in images.items():
+            if fs_id is None:
+                row(original_id[image_id], status="skipped: no fileset (not an in-place import)")
+            else:
+                requested_filesets.setdefault(fs_id, []).append(original_id[image_id])
+        for fs_id, fs_images in requested_filesets.items():
+            image = min(fs_images)  # one image per fileset: the lowest requested id
+            if fs_id in not_in_place:
+                row(image, status=f"skipped: not imported in place ({not_in_place[fs_id]})")
+            elif fs_id in skipped_filesets:  # one row for the whole fileset
+                row(image, status="skipped: fileset not transferred because "
+                                  + skipped_filesets[fs_id])
+            elif fs_id not in files_of:
+                row(image, status="skipped: no files found for fileset")
+            else:  # transferred whole: a row per file
+                for path in sorted(files_of[fs_id]):
+                    row(image, dests[path])
+        with open(args.csv, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["image_id", "destination_path", "status"])
+            writer.writerows(sorted(rows))
+        print(f"wrote {len(rows)} rows to {args.csv}")
     print(f"total size {human_size(written_bytes)}; estimated Globus transfer time "
           f"~{human_time(written_bytes / GLOBUS_BYTES_PER_SECOND)} "
           "(very rough: depends on endpoints, network and file count)")
