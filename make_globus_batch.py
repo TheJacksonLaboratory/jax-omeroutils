@@ -111,17 +111,17 @@ def human_time(seconds):
 
 
 def connect(host=None):
-    omero_user = input("OMERO user: ")
-    omero_host = host or os.environ.get("OMERO_HOST") or input("OMERO host: ")
+    omero_user = input("Internal OMERO user: ")
+    omero_host = host or os.environ.get("OMERO_HOST") or input("Internal OMERO host: ")
     conn = BlitzGateway(
         username=omero_user,
-        passwd=getpass.getpass(),
+        passwd=getpass.getpass("Internal OMERO password: "),
         host=omero_host,
         port=4064,
     )
     if not conn.connect():
         sys.exit(
-            f"Could not connect to OMERO at {omero_host}:4064 as "
+            f"Could not connect to the internal OMERO at {omero_host}:4064 as "
             f"'{omero_user}'. Check your "
             "username, password, and host (and that the server is reachable)."
         )
@@ -170,7 +170,7 @@ def public_image_ids(session, public_url, obj_type, obj_id):
     """Public mode only: public ids of every image in a public project or dataset."""
     api = f"{public_url}/api/v0/m"
     if public_get(session, f"{api}/{obj_type.lower()}s/{obj_id}/") is None:
-        sys.exit(f"{obj_type} {obj_id} not found or not readable")
+        sys.exit(f"{obj_type} {obj_id} not found or not readable in the public OMERO")
     if obj_type == "Project":
         dataset_ids = [d["@id"] for d in public_list(session, f"{api}/projects/{obj_id}/datasets/")]
     else:
@@ -223,7 +223,7 @@ def public_to_internal_ids(session, public_url, public_ids):
 def image_ids_in(conn, obj_type, obj_id):
     """Ids of every image in a project or dataset."""
     if conn.getObject(obj_type, obj_id) is None:
-        sys.exit(f"{obj_type} {obj_id} not found or not readable")
+        sys.exit(f"{obj_type} {obj_id} not found or not readable in the internal OMERO")
     if obj_type == "Project":
         hql = ("select distinct i.id from Project p join p.datasetLinks dl "
                "join dl.child d join d.imageLinks il join il.child i where p.id = :id")
@@ -344,7 +344,7 @@ def main(argv=None):
         description="Write a Globus transfer batch file for the original files of "
                     "in-place imported OMERO images, from a project, dataset or "
                     "image, or from a text file listing several such objects "
-                    "(Image:, Dataset: or Project: lines). The OMERO server is "
+                    "(Image:, Dataset: or Project: lines). The internal OMERO server is "
                     "taken from --omero-host, else the OMERO_HOST environment "
                     "variable, else prompted for. With --public the ids are those "
                     "of the PUBLIC OMERO instead, and each image is translated to "
@@ -388,7 +388,7 @@ def main(argv=None):
                              "project); when several requested images share a fileset, "
                              "the lowest id is used")
     parser.add_argument("--omero-host",
-                        help="(internal) OMERO server to connect to (default: the "
+                        help="internal OMERO server to connect to (default: the "
                              "OMERO_HOST environment variable, else prompted for)")
     parser.add_argument("--public", action="store_true",
                         help="the ids are on the PUBLIC OMERO (no login needed), not "
@@ -444,7 +444,7 @@ def main(argv=None):
     not_found = [i for i in image_ids if i not in images]  # can be many: summarized
     if not_found:
         shown = ", ".join(map(str, not_found[:10])) + (", ..." if len(not_found) > 10 else "")
-        warn(f"{len(not_found)} images not found or not readable by this user; "
+        warn(f"{len(not_found)} images not found or not readable by this user in the internal OMERO; "
              f"skipped (image ids: {shown})")
 
     in_place_filesets = set()
