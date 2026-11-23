@@ -372,7 +372,7 @@ def main(argv=None):
                              "the folder structure below src_root; files whose names "
                              "collide cause their whole fileset to be skipped, with a "
                              "warning")
-    parser.add_argument("--csv", metavar="FILE",
+    parser.add_argument("--report", metavar="FILE",
                         help="also write a CSV accounting for the whole request, joining "
                              "filesets and files: columns image_id, destination_path, "
                              "status (no source paths or internal ids, so it can be "
@@ -468,7 +468,7 @@ def main(argv=None):
     skipped = len(unmapped) + len(not_found) + len(not_in_place) + len(skipped_filesets) + sum(
         fs_id is None for _, fs_id, _ in images.values())
     print(f"wrote {len(dests)} files to {args.out_file}; {skipped} skipped (see warnings)")
-    if args.csv:  # joins every requested fileset with every file; nothing is left out
+    if args.report:  # joins every requested fileset with every file; nothing is left out
         rows = []  # (image_id, destination_path, status); no internal paths or ids
 
         def row(image, dest="", status="transferred"):
@@ -496,11 +496,11 @@ def main(argv=None):
             else:  # transferred whole: a row per file
                 for path in sorted(files_of[fs_id]):
                     row(image, dests[path])
-        with open(args.csv, "w", newline="") as f:
+        with open(args.report, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(["image_id", "destination_path", "status"])
             writer.writerows(sorted(rows))
-        print(f"wrote {len(rows)} rows to {args.csv}")
+        print(f"wrote {len(rows)} rows to {args.report}")
     print(f"total size {human_size(written_bytes)}; estimated Globus transfer time "
           f"~{human_time(written_bytes / GLOBUS_BYTES_PER_SECOND)} "
           "(very rough: depends on endpoints, network and file count)")
