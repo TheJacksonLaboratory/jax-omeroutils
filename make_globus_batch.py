@@ -373,20 +373,13 @@ def main(argv=None):
                              "collide cause their whole fileset to be skipped, with a "
                              "warning")
     parser.add_argument("--report", metavar="FILE",
-                        help="also write a CSV accounting for the whole request, joining "
-                             "filesets and files: columns image_id, destination_path, "
-                             "status (no source paths or internal ids, so it can be "
-                             "shared). A row per file of each transferred fileset (a file "
-                             "shared by several requested filesets appears once per "
-                             "fileset, though it is transferred once). Anything skipped "
-                             "gets one row, with an empty destination and the reason in "
-                             "status: a fileset not imported in place, a fileset with a "
-                             "file that cannot be transferred (one row for the whole "
-                             "fileset), an image not found or without a usable origin "
-                             "id. image_id uses the same ids as the input (public ids "
-                             "with --public, even if the input was a dataset or "
-                             "project); when several requested images share a fileset, "
-                             "the lowest id is used")
+                        help="also write a TSV report (no source paths or internal ids, "
+                             "so it can be shared) with columns image_ids, "
+                             "destination_path, status: a row per file of each "
+                             "transferred fileset, and one row, with the reason in "
+                             "status, for anything skipped. image_ids are the requested "
+                             "images of the fileset (public ids with --public), "
+                             "separated by ';'")
     parser.add_argument("--omero-host",
                         help="internal OMERO server to connect to (default: the "
                              "OMERO_HOST environment variable, else prompted for)")
@@ -430,13 +423,13 @@ def main(argv=None):
     if len(objects) > 1:
         print(f"{len(ids)} distinct images in total")
     unmapped = []  # public ids with no internal id
-    original_id = {i: i for i in ids}  # internal image id -> id in the input's terms
+    original_id = {i: [i] for i in ids}  # internal image id -> its ids in the input's terms
     if public:  # translate public ids to the internal ids used from here on
         mapping = public_to_internal_ids(session, public_url, sorted(ids))
         unmapped = sorted(ids - mapping.keys())
         original_id = {}
         for public_id, internal_id in sorted(mapping.items()):
-            original_id.setdefault(internal_id, public_id)  # lowest public id wins
+            original_id.setdefault(internal_id, []).append(public_id)  # sorted: lowest first
     image_ids = sorted(original_id)
 
     # 2. which of those were imported in place, and where are the files
@@ -469,13 +462,13 @@ def main(argv=None):
         fs_id is None for _, fs_id, _ in images.values())
     print(f"wrote {len(dests)} files to {args.out_file}; {skipped} skipped (see warnings)")
     if args.report:  # joins every requested fileset with every file; nothing is left out
-        rows = []  # (image_id, destination_path, status); no internal paths or ids
+        rows = []  # (image ids, destination_path, status); no internal paths or ids
 
-        def row(image, dest="", status="transferred"):
-            rows.append((image, str(dest), status))
+        def row(images, dest="", status="transferred"):
+            rows.append((sorted(images), str(dest), status))
 
         for public_id in unmapped:
-            row(public_id, status="skipped: no usable origin_image_id")
+            row([public_id], status="skipped: no usable origin_image_id")
         for image_id in not_found:
             row(original_id[image_id], status="skipped: image not found or not readable")
         requested_filesets = {}  # fileset id -> its requested image ids (in the input's terms)
@@ -483,23 +476,23 @@ def main(argv=None):
             if fs_id is None:
                 row(original_id[image_id], status="skipped: no fileset (not an in-place import)")
             else:
-                requested_filesets.setdefault(fs_id, []).append(original_id[image_id])
+                requested_filesets.setdefault(fs_id, []).extend(original_id[image_id])
         for fs_id, fs_images in requested_filesets.items():
-            image = min(fs_images)  # one image per fileset: the lowest requested id
             if fs_id in not_in_place:
-                row(image, status=f"skipped: not imported in place ({not_in_place[fs_id]})")
+                row(fs_images, status=f"skipped: not imported in place ({not_in_place[fs_id]})")
             elif fs_id in skipped_filesets:  # one row for the whole fileset
-                row(image, status="skipped: fileset not transferred because "
+                row(fs_images, status="skipped: fileset not transferred because "
                                   + skipped_filesets[fs_id])
             elif fs_id not in files_of:
-                row(image, status="skipped: no files found for fileset")
+                row(fs_images, status="skipped: no files found for fileset")
             else:  # transferred whole: a row per file
                 for path in sorted(files_of[fs_id]):
-                    row(image, dests[path])
+                    row(fs_images, dests[path])
         with open(args.report, "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(["image_id", "destination_path", "status"])
-            writer.writerows(sorted(rows))
+            writer = csv.writer(f, delimiter="\t")
+            writer.writerow(["image_ids", "destination_path", "status"])
+            for ids, dest, status in sorted(rows, key=lambda r: (r[0][0], r[1], r[2])):
+                writer.writerow([";".join(map(str, ids)), dest, status])  # first id sorts rows
         print(f"wrote {len(rows)} rows to {args.report}")
     print(f"total size {human_size(written_bytes)}; estimated Globus transfer time "
           f"~{human_time(written_bytes / GLOBUS_BYTES_PER_SECOND)} "
