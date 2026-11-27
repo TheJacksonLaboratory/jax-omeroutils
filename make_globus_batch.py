@@ -375,7 +375,7 @@ def main(argv=None):
     parser.add_argument("--report", metavar="FILE",
                         help="also write a TSV report (no source paths or internal ids, "
                              "so it can be shared) with columns image_ids, "
-                             "destination_path, status: a row per file of each "
+                             "destination_path (relative to dest_root), status: a row per file of each "
                              "transferred fileset, and one row, with the reason in "
                              "status, for anything skipped. image_ids are the requested "
                              "images of the fileset (public ids with --public), "
@@ -487,7 +487,7 @@ def main(argv=None):
                 row(fs_images, status="skipped: no files found for fileset")
             else:  # transferred whole: a row per file
                 for path in sorted(files_of[fs_id]):
-                    row(fs_images, dests[path])
+                    row(fs_images, dests[path].relative_to(dest_root))  # not dest_root itself
         with open(args.report, "w", newline="") as f:
             writer = csv.writer(f, delimiter="\t")
             writer.writerow(["image_ids", "destination_path", "status"])
